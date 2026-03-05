@@ -1,6 +1,6 @@
 import type { Configuration, RedirectRequest } from '@azure/msal-browser';
 
-const BASE_PATH = '/hospital-buin-paine-dashboard/';
+const BASE_PATH = '/hospital-buin-paine-dashboard-sgd/';
 
 export const msalConfig: Configuration = {
   auth: {
