@@ -3,6 +3,8 @@ import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../authConfig';
 import './LoginPage.css';
 
+const base = import.meta.env.BASE_URL;
+
 export const LoginPage: React.FC = () => {
   const { instance } = useMsal();
   const [loading, setLoading] = useState(false);
@@ -13,7 +15,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
     try {
       await instance.loginRedirect(loginRequest);
-    } catch (e: any) {
+    } catch {
       setError('Error al iniciar sesión. Intente nuevamente.');
       setLoading(false);
     }
@@ -21,27 +23,46 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="login-container">
-      <div className="login-card">
-        <div className="login-logo-wrapper">
-          <img src="/hospital-buin-paine-dashboard/logo-buin-paine.png" alt="Hospital Buin Paine" className="login-logo" />
+      {/* Panel izquierdo — branding */}
+      <div className="login-panel-left">
+        <div className="login-brand">
+          <img src={`${base}logo-dominion.png`} alt="Dominion" className="login-logo-dominion" />
         </div>
-        <h1 className="login-title">Dashboard</h1>
-        <p className="login-subtitle">Hospital Buin Paine</p>
-        <p className="login-description">
-          Inicie sesión con su cuenta corporativa Microsoft 365 para acceder.
+        <div className="login-hero">
+          <h1 className="login-hero-title">Dashboard<br />Hospital Buin Paine<br />Mobiliario No Clínico</h1>
+        </div>
+        <p className="login-panel-footer">
+          © {new Date().getFullYear()} Dominion Global · Todos los derechos reservados
         </p>
-        <button
-          className="login-btn-microsoft"
-          onClick={handleLogin}
-          disabled={loading}
-        >
-          <MicrosoftIcon />
-          {loading ? 'Redirigiendo...' : 'Iniciar sesión con Microsoft'}
-        </button>
-        {error && <p className="login-error">{error}</p>}
-        <p className="login-footer">
-          Acceso exclusivo para personal autorizado de Dominion Global
-        </p>
+      </div>
+
+      {/* Panel derecho — formulario */}
+      <div className="login-panel-right">
+        <div className="login-card">
+          <div className="login-hospital-logo-wrap">
+            <img
+              src={`${base}logo-buin-paine.png`}
+              alt="Hospital Buin Paine"
+              className="login-hospital-logo"
+            />
+          </div>
+          <h2 className="login-card-title">Iniciar sesión</h2>
+          <p className="login-card-desc">
+            Usa tu cuenta corporativa Microsoft 365 para acceder al sistema.
+          </p>
+          <button
+            className="login-btn-microsoft"
+            onClick={handleLogin}
+            disabled={loading}
+          >
+            <MicrosoftIcon />
+            {loading ? 'Redirigiendo a Microsoft...' : 'Continuar con Microsoft'}
+          </button>
+          {error && <p className="login-error">{error}</p>}
+          <p className="login-card-footer">
+            Acceso exclusivo para personal autorizado
+          </p>
+        </div>
       </div>
     </div>
   );

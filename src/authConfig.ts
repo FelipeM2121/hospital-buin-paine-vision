@@ -14,8 +14,17 @@ export const msalConfig: Configuration = {
     cacheLocation: 'sessionStorage',
     storeAuthStateInCookie: false,
   },
+  system: {
+    // Increase timeout for interactive requests (in milliseconds)
+    // Default is 60000 (60 seconds), we increase to 120 seconds
+    tokenRenewalOffsetSeconds: 120,
+  },
 };
 
 export const loginRequest: RedirectRequest = {
   scopes: ['openid', 'profile', 'email', 'User.Read'],
+};
+
+export const sharePointRequest: RedirectRequest = {
+  scopes: ['Sites.Read.All'],
 };

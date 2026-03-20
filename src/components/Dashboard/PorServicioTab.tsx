@@ -1,0 +1,71 @@
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { COLORS, CHART_COLORS } from "../../constants/theme";
+import { SectionTitle } from "../Shared/SectionTitle";
+import { DataTable } from "../Shared/DataTable";
+import { ProgressBar } from "../Shared/ProgressBar";
+import { CustomTooltip } from "../Shared/CustomTooltip";
+import type { SummaryData } from "../../types";
+
+interface PorServicioTabProps {
+  summary: SummaryData;
+}
+
+export function PorServicioTab({ summary: S }: PorServicioTabProps) {
+  return (
+    <>
+      <SectionTitle count={S.uniqueServicios}>Cantidad por Servicio</SectionTitle>
+      
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 24,
+      }}>
+        <ResponsiveContainer width="100%" height={560}>
+          <BarChart data={S.byServicio.slice(0, 20)} layout="vertical" margin={{ left: 10 }}>
+            <XAxis 
+              type="number" 
+              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <YAxis 
+              type="category" 
+              dataKey="name" 
+              width={200} 
+              tick={{ fill: COLORS.text, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="qty" name="Cantidad" radius={[0, 6, 6, 0]}>
+              {S.byServicio.slice(0, 20).map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <DataTable
+        data={S.byServicio.map((s, i) => ({
+          ...s,
+          rank: i + 1,
+          pctQty: ((s.qty / S.totalQty) * 100).toFixed(1) + "%",
+        }))}
+        columns={[
+          { key: "rank", label: "#", align: "center", mono: true, width: "60px" },
+          { key: "name", label: "Servicio", highlight: true },
+          { key: "qty", label: "Cantidad", align: "right", mono: true, width: "120px" },
+          { key: "pctQty", label: "% del Total", align: "right", mono: true, width: "120px" },
+          { 
+            key: "qty", 
+            label: "Distribución", 
+            render: (v) => <ProgressBar value={v} max={825} color={COLORS.primary} /> 
+          },
+        ]}
+        maxRows={15}
+      />
+    </>
+  );
+}

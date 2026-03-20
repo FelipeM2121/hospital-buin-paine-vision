@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <!-- D icon -->
+  <rect x="0" y="4" width="40" height="40" rx="6" fill="#0078D4"/>
+  <text x="20" y="32" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="white" text-anchor="middle">D</text>
+  <!-- DOMINION text -->
+  <text x="52" y="34" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#0f172a" letter-spacing="1">DOMINION</text>
+</svg>

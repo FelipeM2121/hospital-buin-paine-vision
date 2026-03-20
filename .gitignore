@@ -11,9 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
 
-# PDFs grandes (subir manualmente si se necesitan)
-public/eett/*.pdf
+# PDFs grandes (descomentar si no se quieren en el repo)
+# public/eett/*.pdf
 
 # Editor directories and files
 .vscode/*
