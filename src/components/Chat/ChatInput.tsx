@@ -106,7 +106,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               background: "#e8e8e8", borderRadius: "12px",
               padding: "3px 10px", fontWeight: 500,
               userSelect: "none",
+              display: "flex", alignItems: "center", gap: "4px",
             }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4caf50" }} />
               mistral
             </span>
 

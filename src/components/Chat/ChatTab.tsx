@@ -75,6 +75,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
   const handleClearChat = () => {
     setMessages([]);
     setError(null);
+    ChatService.clearHistory();
   };
 
   const suggestions = [
