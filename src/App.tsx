@@ -43,7 +43,7 @@ export default function App() {
                 <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
               )}
               {activeTab === "Control Documento" && <ControlDocumentos />}
-              {activeTab === "Chat IA" && <ChatTab data={RAW} summary={S} />}
+              {activeTab === "Chat IA" && <ChatTab data={RAW} summary={S} eettFiles={EETT_FILES} />}
 
               <div className="dashboard-footer">
                 <span>Hospital Buin Paine • Mobiliario No Clínico</span>

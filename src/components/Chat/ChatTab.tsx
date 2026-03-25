@@ -3,11 +3,12 @@ import { SquarePen, PanelLeft, AlertCircle } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { ChatService, Message, ChatError } from "./ChatService";
-import type { RawItem, SummaryData } from "../../types";
+import type { RawItem, SummaryData, EETTFile } from "../../types";
 
 interface ChatTabProps {
   data: RawItem[];
   summary: SummaryData;
+  eettFiles?: EETTFile[];
 }
 
 /* ── Central icon (hospital/inventory bot) ── */
@@ -26,15 +27,15 @@ const CenterIcon = () => (
   </svg>
 );
 
-export const ChatTab: React.FC<ChatTabProps> = ({ data, summary }) => {
+export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) => {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<ChatError | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    ChatService.setData(data, summary);
-  }, [data, summary]);
+    ChatService.setData(data, summary, eettFiles || []);
+  }, [data, summary, eettFiles]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
