@@ -131,4 +131,14 @@ export const Icons = {
       <rect x="2" y="16" width="8" height="5" rx="1.5" fill="white" fillOpacity="0.9"/>
     </svg>
   ),
+  // Chat IA / burbujas de diálogo
+  chat: (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 4C3 2.9 3.9 2 5 2H19C20.1 2 21 2.9 21 4V14C21 15.1 20.1 16 19 16H5C3.9 16 3 15.1 3 14V4Z" fill="white" fillOpacity="0.85"/>
+      <path d="M3 16L6 20C6.6 20.6 7.4 21 8.5 21H15.5C16.6 21 17 20.6 17.6 20L20 16" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="7" cy="8" r="1.5" fill="white" fillOpacity="0.4"/>
+      <circle cx="12" cy="8" r="1.5" fill="white" fillOpacity="0.4"/>
+      <circle cx="17" cy="8" r="1.5" fill="white" fillOpacity="0.4"/>
+    </svg>
+  ),
 };

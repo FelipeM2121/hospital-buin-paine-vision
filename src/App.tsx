@@ -10,6 +10,7 @@ import {
   PorFechaTab,
   EspecificacionesTecnicasTab,
 } from "./components/Dashboard";
+import { ChatTab } from "./components/Chat/ChatTab";
 import { RAW, SUMMARY, EETT_FILES } from "./data";
 import { PdfViewer } from "./components/PdfViewer";
 import { Sidebar } from "./components/Sidebar";
@@ -42,6 +43,7 @@ export default function App() {
                 <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
               )}
               {activeTab === "Control Documento" && <ControlDocumentos />}
+              {activeTab === "Chat IA" && <ChatTab data={RAW} summary={S} />}
 
               <div className="dashboard-footer">
                 <span>Hospital Buin Paine • Mobiliario No Clínico</span>
