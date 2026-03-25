@@ -15,7 +15,7 @@ export interface ChatError {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Chat Service — Ollama LLM (local) con contexto completo
+   Chat Service — Ollama LLM (local) con streaming
    Conecta directamente a Ollama en localhost:11434
    ═══════════════════════════════════════════════════════════════ */
 
@@ -24,9 +24,8 @@ const MODEL = "mistral";
 
 const fmt = (n: number) => n.toLocaleString("es-CL");
 
-// ── Build the full data context for the LLM system prompt ──
+// ── Build COMPACT system prompt (optimized for CPU speed) ──
 function buildSystemPrompt(data: RawItem[], summary: SummaryData, eettFiles: EETTFile[]): string {
-  // Group data
   const byFamilia: Record<string, number> = {};
   const byProveedor: Record<string, number> = {};
   const byPiso: Record<string, number> = {};
@@ -36,7 +35,7 @@ function buildSystemPrompt(data: RawItem[], summary: SummaryData, eettFiles: EET
   data.forEach((i) => {
     byFamilia[i.familia] = (byFamilia[i.familia] || 0) + i.cantidad;
     byProveedor[i.proveedor] = (byProveedor[i.proveedor] || 0) + i.cantidad;
-    byPiso[`Piso ${i.piso}`] = (byPiso[`Piso ${i.piso}`] || 0) + i.cantidad;
+    byPiso[`P${i.piso}`] = (byPiso[`P${i.piso}`] || 0) + i.cantidad;
     byServicio[i.servicio] = (byServicio[i.servicio] || 0) + i.cantidad;
     byNombre[i.nombre] = (byNombre[i.nombre] || 0) + i.cantidad;
   });
@@ -44,92 +43,32 @@ function buildSystemPrompt(data: RawItem[], summary: SummaryData, eettFiles: EET
   const sortDesc = (obj: Record<string, number>) =>
     Object.entries(obj).sort(([, a], [, b]) => b - a);
 
-  const familiaStr = sortDesc(byFamilia).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-  const provStr = sortDesc(byProveedor).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-  const pisoStr = Object.entries(byPiso).sort().map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-  const servStr = sortDesc(byServicio).slice(0, 20).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-  const prodStr = sortDesc(byNombre).slice(0, 25).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
+  const familiaStr = sortDesc(byFamilia).map(([k, v]) => `${k}:${fmt(v)}`).join(", ");
+  const provStr = sortDesc(byProveedor).map(([k, v]) => `${k}:${fmt(v)}`).join(", ");
+  const pisoStr = Object.entries(byPiso).sort().map(([k, v]) => `${k}:${fmt(v)}`).join(", ");
+  const servStr = sortDesc(byServicio).slice(0, 12).map(([k, v]) => `${k}:${fmt(v)}`).join(", ");
+  const prodStr = sortDesc(byNombre).slice(0, 15).map(([k, v]) => `${k}:${fmt(v)}`).join(", ");
 
-  // EETT specs
+  // Compact EETT — only name + code + PDF
   const eettStr = eettFiles.map((e) => {
     const spec = EETT_KNOWLEDGE[e.code];
-    if (spec) {
-      return `  EETT ${e.code} - ${e.name}: ${spec.desc}. Material: ${spec.material}. Dimensiones: ${spec.dimensiones}. Color: ${spec.color}. PDF: ${e.file}`;
-    }
-    return `  EETT ${e.code} - ${e.name}. PDF: ${e.file}`;
+    return spec
+      ? `${e.code} ${e.name}: ${spec.material}, ${spec.dimensiones}. PDF:${e.file}`
+      : `${e.code} ${e.name}. PDF:${e.file}`;
   }).join("\n");
 
-  // Dates
-  const fechaStr = summary.byMes?.map((m) => `  ${m.name}: ${fmt(m.qty)} uds`).join("\n") || "  Sin datos de fechas";
+  return `Eres el asistente IA del inventario Hospital Buin Paine. Responde SIEMPRE en español, con datos exactos. Usa markdown para tablas. PDFs en ruta "eett/ARCHIVO".
 
-  // Zonas
-  const zonaStr = summary.byZona?.slice(0, 15).map((z) => `  ${z.name}: ${fmt(z.qty)} uds`).join("\n") || "";
+INVENTARIO: ${fmt(summary.totalItems)} items, ${fmt(summary.totalQty)} uds, ${summary.pisos} pisos, ${summary.uniqueServicios} servicios, ${summary.proveedores} proveedores
+Familias: ${familiaStr}
+Proveedores: ${provStr}
+Pisos: ${pisoStr}
+Top Servicios: ${servStr}
+Top Productos: ${prodStr}
+Instalación: ${summary.fechaStats?.fechaMin || "04/05/2026"} a ${summary.fechaStats?.fechaMax || "03/08/2026"}
 
-  return `Eres el asistente IA del Sistema de Gestión Documental (SGD) del Hospital Buin Paine.
-Respondes preguntas sobre el inventario de mobiliario no clínico del hospital.
-
-INSTRUCCIONES:
-- Responde SIEMPRE en español
-- Sé conciso y profesional
-- Usa datos específicos y cifras exactas de los datos proporcionados
-- Cuando muestres tablas, usa formato markdown
-- Si preguntan algo fuera del inventario, redirecciona amablemente
-- Si preguntan por un producto específico, incluye la ficha técnica EETT si existe
-- Los PDFs de fichas técnicas están en la ruta "eett/" seguido del nombre del archivo
-
-═══ DATOS DEL INVENTARIO ═══
-
-ESTADÍSTICAS GENERALES:
-- Total artículos: ${fmt(summary.totalItems)}
-- Total unidades: ${fmt(summary.totalQty)}
-- Recintos únicos: ${fmt(summary.uniqueRecintos)}
-- Tipos de mueble: ${summary.uniqueNombres}
-- Pisos: ${summary.pisos} (del 1 al 7)
-- Servicios: ${summary.uniqueServicios}
-- Proveedores: ${summary.proveedores}
-- Familias: ${summary.familias} (Silla, Mesa, Otro, Mobiliario)
-
-POR FAMILIA:
-${familiaStr}
-
-POR PROVEEDOR:
-${provStr}
-
-POR PISO:
-${pisoStr}
-
-TOP 20 SERVICIOS:
-${servStr}
-
-TOP 25 PRODUCTOS:
-${prodStr}
-
-CALENDARIO DE INSTALACIÓN:
-- Período: ${summary.fechaStats?.fechaMin || "04/05/2026"} a ${summary.fechaStats?.fechaMax || "03/08/2026"}
-${fechaStr}
-
-TOP ZONAS:
-${zonaStr}
-
-═══ FICHAS TÉCNICAS EETT (${eettFiles.length} especificaciones) ═══
-${eettStr}
-
-═══ CONTROL DOCUMENTAL ═══
-Sistema de control documental en SharePoint. Estructura por código de item MNC.
-Cada item tiene: ETAPA CONSTRUCCION y ETAPA EXPLOTACION, cada una con ADQUISICION > Antecedentes Ofertas (A, B, C por proveedor).
-Carpetas A = ${summary.byProveedor?.[0]?.name || "Proveedor A"}, B = ${summary.byProveedor?.[1]?.name || "Proveedor B"}, C = ${summary.byProveedor?.[2]?.name || "Proveedor C"}
-
-═══ SECCIONES DE LA PLATAFORMA ═══
-- Resumen: KPIs generales del inventario
-- Por Piso: Distribución en 7 pisos
-- Por Servicio: Desglose en ${summary.uniqueServicios} servicios
-- Por Producto: ${summary.uniqueNombres} tipos de mueble
-- Por Fecha: Calendario de instalación
-- Esp. Técnicas: ${eettFiles.length} fichas EETT con PDFs
-- Control Documento: Repositorio SharePoint
-- Chat IA: Este asistente
-
-Fecha actual: ${new Date().toLocaleDateString("es-CL")}`;
+EETT (${eettFiles.length} fichas):
+${eettStr}`;
 }
 
 // ── EETT knowledge base ──
@@ -172,9 +111,10 @@ const EETT_KNOWLEDGE: Record<string, { desc: string; material: string; dimension
   "204.020": { desc: "Butaca espera 3 cuerpos", material: "Polipropileno, estructura metálica", dimensiones: "1700x550x800mm", color: "Azul/gris, cromada" },
 };
 
-// ── Ollama API call ──
-async function callOllama(
+// ── Ollama API call with STREAMING ──
+async function callOllamaStream(
   messages: { role: string; content: string }[],
+  onToken: (token: string) => void,
 ): Promise<string> {
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: "POST",
@@ -182,15 +122,41 @@ async function callOllama(
     body: JSON.stringify({
       model: MODEL,
       messages,
-      stream: false,
-      options: { temperature: 0.3, num_ctx: 8192 },
+      stream: true,
+      options: { temperature: 0.3, num_ctx: 4096 },
     }),
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(180000),
   });
 
   if (!res.ok) throw new Error(`Ollama error: ${res.status}`);
-  const data = await res.json();
-  return data.message?.content || "Sin respuesta del modelo.";
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let fullText = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    // Each line is a JSON object
+    const lines = chunk.split("\n").filter((l) => l.trim());
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line);
+        if (json.message?.content) {
+          fullText += json.message.content;
+          onToken(json.message.content);
+        }
+      } catch {
+        // skip malformed chunks
+      }
+    }
+  }
+
+  return fullText || "Sin respuesta del modelo.";
 }
 
 // ── Public API ──
@@ -227,7 +193,8 @@ class ChatServiceClass {
   async sendMessage(
     message: string,
     _sessionId?: string,
-    _history?: Message[]
+    _history?: Message[],
+    onToken?: (token: string) => void,
   ): Promise<
     | { response: { id: string; response: string; sessionId: string; tokensUsed: number; model: string; timestamp: string }; error: null }
     | { response: null; error: ChatError }
@@ -254,9 +221,9 @@ class ChatServiceClass {
       // Add user message to conversation
       this.conversationHistory.push({ role: "user", content: message });
 
-      // Keep last 10 messages to avoid context overflow
-      if (this.conversationHistory.length > 10) {
-        this.conversationHistory = this.conversationHistory.slice(-10);
+      // Keep last 6 messages to reduce context size
+      if (this.conversationHistory.length > 6) {
+        this.conversationHistory = this.conversationHistory.slice(-6);
       }
 
       // Build messages array for Ollama
@@ -265,7 +232,7 @@ class ChatServiceClass {
         ...this.conversationHistory,
       ];
 
-      const answer = await callOllama(ollamaMessages);
+      const answer = await callOllamaStream(ollamaMessages, onToken || (() => {}));
 
       // Add assistant response to history
       this.conversationHistory.push({ role: "assistant", content: answer });

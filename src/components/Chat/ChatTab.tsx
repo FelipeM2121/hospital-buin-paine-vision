@@ -51,21 +51,42 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
       content: userMessage,
       timestamp: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    const assistantId = Math.random().toString(36).substr(2, 9);
+
+    // Add user message + empty assistant placeholder for streaming
+    setMessages((prev) => [...prev, userMsg, {
+      id: assistantId,
+      role: "assistant" as const,
+      content: "",
+      timestamp: new Date().toISOString(),
+    }]);
 
     try {
-      const result = await ChatService.sendMessage(userMessage);
+      const result = await ChatService.sendMessage(
+        userMessage,
+        undefined,
+        undefined,
+        // Streaming callback — update assistant message token by token
+        (token: string) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const lastIdx = updated.findIndex((m) => m.id === assistantId);
+            if (lastIdx !== -1) {
+              updated[lastIdx] = { ...updated[lastIdx], content: updated[lastIdx].content + token };
+            }
+            return updated;
+          });
+        },
+      );
+
       if (result.error) {
+        // Remove the empty placeholder if error
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
         setError(result.error);
-      } else if (result.response) {
-        setMessages((prev) => [...prev, {
-          id: result.response.id,
-          role: "assistant",
-          content: result.response.response,
-          timestamp: result.response.timestamp,
-        }]);
       }
+      // If success, streaming already filled the message content
     } catch {
+      setMessages((prev) => prev.filter((m) => m.id !== assistantId));
       setError({ error: true, message: "Error al procesar la solicitud", code: "UNKNOWN_ERROR" });
     } finally {
       setIsLoading(false);
