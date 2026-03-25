@@ -15,169 +15,14 @@ export interface ChatError {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Chat Service — Ollama LLM (local) con streaming
-   Conecta directamente a Ollama en localhost:11434
+   Chat Service — Ollama LLM con Smart Context Selection
+   Solo inyecta datos RELEVANTES a la pregunta → rápido y preciso
    ═══════════════════════════════════════════════════════════════ */
 
 const OLLAMA_URL = "http://localhost:11434";
-const MODEL = "qwen2:1.5b"; // Rápido en CPU (~5x más veloz que mistral 7B)
+const MODEL = "qwen2:1.5b";
 
 const fmt = (n: number) => n.toLocaleString("es-CL");
-
-// ── Build COMPLETE system prompt with ALL dashboard data ──
-function buildSystemPrompt(data: RawItem[], summary: SummaryData, eettFiles: EETTFile[]): string {
-  // Compute cross-tabulations from raw data
-  const byFamilia: Record<string, number> = {};
-  const byProveedor: Record<string, number> = {};
-  const byPiso: Record<string, number> = {};
-  const byServicio: Record<string, number> = {};
-  const byNombre: Record<string, number> = {};
-  const byZona: Record<string, number> = {};
-  // Cross: producto por piso
-  const prodPiso: Record<string, Record<string, number>> = {};
-  // Cross: servicio por producto
-  const servProd: Record<string, Record<string, number>> = {};
-  // Cross: proveedor por familia
-  const provFam: Record<string, Record<string, number>> = {};
-
-  data.forEach((i) => {
-    byFamilia[i.familia] = (byFamilia[i.familia] || 0) + i.cantidad;
-    byProveedor[i.proveedor] = (byProveedor[i.proveedor] || 0) + i.cantidad;
-    byPiso[`Piso ${i.piso}`] = (byPiso[`Piso ${i.piso}`] || 0) + i.cantidad;
-    byServicio[i.servicio] = (byServicio[i.servicio] || 0) + i.cantidad;
-    byNombre[i.nombre] = (byNombre[i.nombre] || 0) + i.cantidad;
-    byZona[i.zona] = (byZona[i.zona] || 0) + i.cantidad;
-
-    // Producto por piso
-    if (!prodPiso[i.nombre]) prodPiso[i.nombre] = {};
-    prodPiso[i.nombre][`P${i.piso}`] = (prodPiso[i.nombre][`P${i.piso}`] || 0) + i.cantidad;
-
-    // Top servicios: qué productos tienen
-    if (!servProd[i.servicio]) servProd[i.servicio] = {};
-    servProd[i.servicio][i.nombre] = (servProd[i.servicio][i.nombre] || 0) + i.cantidad;
-
-    // Proveedor por familia
-    if (!provFam[i.proveedor]) provFam[i.proveedor] = {};
-    provFam[i.proveedor][i.familia] = (provFam[i.proveedor][i.familia] || 0) + i.cantidad;
-  });
-
-  const sortDesc = (obj: Record<string, number>) =>
-    Object.entries(obj).sort(([, a], [, b]) => b - a);
-
-  // === SECCIÓN 1: Estadísticas generales ===
-  const stats = `ESTADÍSTICAS GENERALES:
-Total artículos: ${fmt(summary.totalItems)} | Total unidades: ${fmt(summary.totalQty)}
-Recintos: ${fmt(summary.uniqueRecintos)} | Tipos de mueble: ${summary.uniqueNombres} | Pisos: ${summary.pisos} (1-7)
-Servicios: ${summary.uniqueServicios} | Proveedores: ${summary.proveedores} | Familias: ${summary.familias}`;
-
-  // === SECCIÓN 2: Familias ===
-  const familiaStr = sortDesc(byFamilia).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-
-  // === SECCIÓN 3: Proveedores con desglose ===
-  const provStr = sortDesc(byProveedor).map(([prov, total]) => {
-    const fams = Object.entries(provFam[prov] || {}).map(([f, q]) => `${f}:${q}`).join(", ");
-    return `  ${prov}: ${fmt(total)} uds (${fams})`;
-  }).join("\n");
-
-  // === SECCIÓN 4: Pisos ===
-  const pisoStr = Object.entries(byPiso).sort().map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-
-  // === SECCIÓN 5: TODOS los 39 servicios ===
-  const servStr = sortDesc(byServicio).map(([k, v]) => {
-    const topProds = Object.entries(servProd[k] || {}).sort(([,a],[,b]) => b - a).slice(0, 3).map(([p, q]) => `${p}:${q}`).join(", ");
-    return `  ${k}: ${fmt(v)} uds [${topProds}]`;
-  }).join("\n");
-
-  // === SECCIÓN 6: TODOS los productos con distribución por piso ===
-  const prodStr = sortDesc(byNombre).map(([k, v]) => {
-    const pisos = Object.entries(prodPiso[k] || {}).sort().map(([p, q]) => `${p}:${q}`).join(",");
-    return `  ${k}: ${fmt(v)} uds (${pisos})`;
-  }).join("\n");
-
-  // === SECCIÓN 7: Zonas ===
-  const zonaStr = sortDesc(byZona).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n");
-
-  // === SECCIÓN 8: Calendario instalación ===
-  const mesStr = summary.byMes?.map((m) => `  ${m.name}: ${fmt(m.qty)} uds`).join("\n") || "";
-  const semStr = summary.bySemana?.map((s) => `  ${s.name}: ${fmt(s.qty)} uds`).join("\n") || "";
-  const diaStr = summary.byDia?.map((d) => `  ${d.name}: ${fmt(d.qty)} uds`).join("\n") || "";
-
-  // === SECCIÓN 9: EETT completas con toda la info ===
-  const eettStr = eettFiles.map((e) => {
-    const spec = EETT_KNOWLEDGE[e.code];
-    if (spec) {
-      return `  EETT ${e.code} - ${e.name}
-    Descripción: ${spec.desc}
-    Material: ${spec.material}
-    Dimensiones: ${spec.dimensiones}
-    Color: ${spec.color}
-    PDF: [${e.name}](eett/${e.file})`;
-    }
-    return `  EETT ${e.code} - ${e.name} | PDF: [${e.name}](eett/${e.file})`;
-  }).join("\n");
-
-  return `Eres el asistente IA del Sistema de Gestión Documental (SGD) del Hospital Buin Paine.
-Tu función es responder preguntas sobre el inventario de mobiliario no clínico del hospital.
-
-REGLAS:
-- Responde SIEMPRE en español chileno profesional
-- Usa cifras EXACTAS de los datos proporcionados, nunca inventes números
-- Usa formato markdown para tablas cuando sea apropiado
-- Si preguntan por un producto, incluye su ficha técnica EETT si existe
-- Los enlaces a PDFs de EETT son: [nombre](eett/ARCHIVO.pdf)
-- Si preguntan algo fuera del inventario, indica amablemente que solo manejas datos del inventario
-- Sé conciso pero completo
-
-═══════════════════════════════════════
-${stats}
-
-FAMILIAS:
-${familiaStr}
-
-PROVEEDORES (con desglose por familia):
-${provStr}
-
-DISTRIBUCIÓN POR PISO:
-${pisoStr}
-
-TODOS LOS SERVICIOS (${summary.uniqueServicios}) con sus productos principales:
-${servStr}
-
-TODOS LOS PRODUCTOS (${summary.uniqueNombres} tipos) con distribución por piso:
-${prodStr}
-
-ZONAS:
-${zonaStr}
-
-CALENDARIO DE INSTALACIÓN:
-Período: ${summary.fechaStats?.fechaMin || "04/05/2026"} a ${summary.fechaStats?.fechaMax || "03/08/2026"} (${summary.fechaStats?.totalMeses} meses)
-Por mes:
-${mesStr}
-Por semana:
-${semStr}
-Por día:
-${diaStr}
-
-═══ FICHAS TÉCNICAS EETT (${eettFiles.length} especificaciones) ═══
-${eettStr}
-
-═══ CONTROL DOCUMENTAL ═══
-Sistema SharePoint con estructura por código de ítem MNC.
-Cada ítem tiene: ETAPA CONSTRUCCIÓN y ETAPA EXPLOTACIÓN.
-Cada etapa tiene: ADQUISICIÓN > Antecedentes Ofertas con carpetas A, B, C por proveedor.
-Carpeta A = ${summary.byProveedor?.[0]?.name || "MELMAN SPA"}
-Carpeta B = ${summary.byProveedor?.[1]?.name || "ALLMEDICA"}
-Carpeta C = ${summary.byProveedor?.[2]?.name || "COMERCIAL HAGELIN"}
-
-═══ SECCIONES DE LA PLATAFORMA ═══
-Resumen: KPIs generales | Por Piso: 7 pisos | Por Servicio: ${summary.uniqueServicios} servicios
-Por Producto: ${summary.uniqueNombres} tipos | Por Fecha: Calendario instalación
-Esp. Técnicas: ${eettFiles.length} fichas EETT con PDFs | Control Documento: Repositorio SharePoint
-Chat IA: Este asistente
-
-Fecha actual: ${new Date().toLocaleDateString("es-CL")}
-═══════════════════════════════════════`;
-}
 
 // ── EETT knowledge base ──
 const EETT_KNOWLEDGE: Record<string, { desc: string; material: string; dimensiones: string; color: string }> = {
@@ -219,6 +64,321 @@ const EETT_KNOWLEDGE: Record<string, { desc: string; material: string; dimension
   "204.020": { desc: "Butaca espera 3 cuerpos", material: "Polipropileno, estructura metálica", dimensiones: "1700x550x800mm", color: "Azul/gris, cromada" },
 };
 
+// ── Pre-computed data indexes (built once on setData) ──
+interface DataIndex {
+  byFamilia: Record<string, number>;
+  byProveedor: Record<string, number>;
+  byPiso: Record<string, number>;
+  byServicio: Record<string, number>;
+  byNombre: Record<string, number>;
+  byZona: Record<string, number>;
+  servProd: Record<string, Record<string, number>>;
+  prodPiso: Record<string, Record<string, number>>;
+  prodServ: Record<string, Record<string, number>>;
+  provFam: Record<string, Record<string, number>>;
+}
+
+function buildIndex(data: RawItem[]): DataIndex {
+  const idx: DataIndex = {
+    byFamilia: {}, byProveedor: {}, byPiso: {}, byServicio: {},
+    byNombre: {}, byZona: {}, servProd: {}, prodPiso: {}, prodServ: {}, provFam: {},
+  };
+
+  data.forEach((i) => {
+    idx.byFamilia[i.familia] = (idx.byFamilia[i.familia] || 0) + i.cantidad;
+    idx.byProveedor[i.proveedor] = (idx.byProveedor[i.proveedor] || 0) + i.cantidad;
+    idx.byPiso[`Piso ${i.piso}`] = (idx.byPiso[`Piso ${i.piso}`] || 0) + i.cantidad;
+    idx.byServicio[i.servicio] = (idx.byServicio[i.servicio] || 0) + i.cantidad;
+    idx.byNombre[i.nombre] = (idx.byNombre[i.nombre] || 0) + i.cantidad;
+    idx.byZona[i.zona] = (idx.byZona[i.zona] || 0) + i.cantidad;
+
+    if (!idx.prodPiso[i.nombre]) idx.prodPiso[i.nombre] = {};
+    idx.prodPiso[i.nombre][`P${i.piso}`] = (idx.prodPiso[i.nombre][`P${i.piso}`] || 0) + i.cantidad;
+
+    if (!idx.servProd[i.servicio]) idx.servProd[i.servicio] = {};
+    idx.servProd[i.servicio][i.nombre] = (idx.servProd[i.servicio][i.nombre] || 0) + i.cantidad;
+
+    if (!idx.prodServ[i.nombre]) idx.prodServ[i.nombre] = {};
+    idx.prodServ[i.nombre][i.servicio] = (idx.prodServ[i.nombre][i.servicio] || 0) + i.cantidad;
+
+    if (!idx.provFam[i.proveedor]) idx.provFam[i.proveedor] = {};
+    idx.provFam[i.proveedor][i.familia] = (idx.provFam[i.proveedor][i.familia] || 0) + i.cantidad;
+  });
+
+  return idx;
+}
+
+const sortDesc = (obj: Record<string, number>) =>
+  Object.entries(obj).sort(([, a], [, b]) => b - a);
+
+// ── Detect what the user is asking about ──
+type Topic = "resumen" | "piso" | "servicio" | "producto" | "proveedor" | "eett" | "fecha" | "zona" | "familia";
+
+function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[]; servicios: string[]; productos: string[]; proveedores: string[]; eettCodes: string[] } } {
+  const q = msg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const topics: Topic[] = [];
+  const matches = { pisos: [] as number[], servicios: [] as string[], productos: [] as string[], proveedores: [] as string[], eettCodes: [] as string[] };
+
+  // Detect piso
+  const pisoMatch = q.match(/piso\s*(\d)/g);
+  if (pisoMatch) {
+    topics.push("piso");
+    pisoMatch.forEach((m) => { const n = parseInt(m.replace(/\D/g, "")); if (n >= 1 && n <= 7) matches.pisos.push(n); });
+  }
+  if (/pisos|distribuc.*piso|por piso/i.test(q)) topics.push("piso");
+
+  // Detect servicio
+  const servicioKeywords: Record<string, string> = {
+    "urgencia": "Urgencia", "administracion": "Administración y apoyo general", "admin": "Administración y apoyo general",
+    "consulta": "Consultas medicas generales", "comedor": "Comedor funcionarios/público",
+    "sala cuna": "Sala Cuna", "hospitalizacion": "Hospitalización", "hospital de dia": "Hospital de día",
+    "psiquiatria": "Psiquiatría", "uhcip": "UHCIP", "laboratorio": "Laboratorio",
+    "rehabilitacion": "Med física y rehabilitación", "imagenologia": "Imagenología",
+    "pabellones": "Pabellones", "pabellon": "Pabellones", "contabilidad": "Contabilidad",
+    "dialisis": "Diálisis", "farmacia": "Farmacia", "uti": "UTI",
+    "alimentacion": "Central de Alimentación", "odontologia": "Odontología",
+    "cafeteria": "Cafetería", "mantenimiento": "Mantenimiento", "biblioteca": "Biblioteca",
+    "parto": "Parto Integral", "paliativos": "Cuidados Paliativos", "cuidados paliativos": "Cuidados Paliativos",
+    "vestuario": "Vestuario", "auditorio": "Auditorio", "abastecimiento": "Abastecimiento",
+    "esterilizacion": "Esterilización", "neonatologia": "Neonatología", "sedile": "SEDILE",
+    "lavanderia": "Lavandería", "morgue": "Morgue", "telemedicina": "Telemedicina",
+    "cirugia": "Cirugía menor", "chile crece": "Chile Crece Contigo",
+  };
+  for (const [kw, svc] of Object.entries(servicioKeywords)) {
+    if (q.includes(kw)) { topics.push("servicio"); matches.servicios.push(svc); }
+  }
+  if (/servicios|por servicio/i.test(q) && matches.servicios.length === 0) topics.push("servicio");
+
+  // Detect producto
+  const productoKeywords: Record<string, string> = {
+    "silla visita": "Silla Visita", "silla ergonomica": "Silla Ergonómica", "ergonomica": "Silla Ergonómica",
+    "silla casino": "Silla tipo Casino", "silla tipo casino": "Silla tipo Casino",
+    "butaca": "Silla Butaca Espera 3 Cuerpos", "sillon bergere": "Sillón Bergere", "bergere": "Sillón Bergere",
+    "escritorio en l": "Escritorio en L Administrativo", "escritorio simple": "Escritorio simple 120x70 cm",
+    "escritorio administrativo": "Escritorio en L Administrativo",
+    "sillon 2 cuerpo": "Sillón 2 Cuerpo", "sillon 1 cuerpo": "Sillón 1 Cuerpo",
+    "mesa casino": "Mesa Tipo Casino", "mesa reunion": "Mesa Reuniones Tipo I",
+    "biblioteca": "Mueble Tipo Biblioteca A", "mueble biblioteca": "Mueble Tipo Biblioteca A",
+    "banca madera": "Banca Madera B", "banca": "Banca Madera B",
+    "escritorio consulta": "Escritorio de Consultas", "punto de registro": "Punto de Registro",
+    "colchoneta": "Colchoneta Reposo A", "silla parvulo": "Silla Párvulo", "parvulo": "Silla Párvulo",
+    "silla universitaria": "Silla Tipo Universitaria", "universitaria": "Silla Tipo Universitaria",
+    "mesa lateral": "Mesa Lateral", "perchero": "Perchero", "velador": "Velador",
+    "cama apilable": "Cama Apilable", "locker": "Mueble Locker", "cuna": "Cuna Alta",
+    "silla lactante": "Silla Lactante", "silla bacinica": "Silla Bacínica", "bacinica": "Silla Bacínica",
+    "taburete": "Taburete con Ruedas", "atril": "Atril Graduable",
+    "silla ingesta": "Silla de Apoyo Hora Ingesta", "ingesta": "Silla de Apoyo Hora Ingesta",
+    "mesa parvulo": "Mesa Párvulo Tipo I", "contenedor": "Contenedor",
+    "librero": "Librero", "arrimo": "Mueble Arrimo", "silla adulto": "Silla Adulto",
+    "estacion de trabajo": "Estación de Trabajo",
+  };
+  for (const [kw, prod] of Object.entries(productoKeywords)) {
+    if (q.includes(kw)) { topics.push("producto"); matches.productos.push(prod); }
+  }
+  // Generic product queries
+  if (/productos|muebles|mobiliario|por producto|cuantos tipos/i.test(q) && matches.productos.length === 0) topics.push("producto");
+  if (/sillas|mesas|sillones|escritorios|bancas/i.test(q) && matches.productos.length === 0) topics.push("familia");
+
+  // Detect proveedor
+  if (/melman/i.test(q)) { topics.push("proveedor"); matches.proveedores.push("MELMAN SPA"); }
+  if (/allmedica/i.test(q)) { topics.push("proveedor"); matches.proveedores.push("ALLMEDICA"); }
+  if (/hagelin/i.test(q)) { topics.push("proveedor"); matches.proveedores.push("COMERCIAL HAGELIN"); }
+  if (/proveedor/i.test(q) && matches.proveedores.length === 0) topics.push("proveedor");
+
+  // Detect EETT / ficha técnica
+  if (/eett|ficha tecnica|especificacion|material|dimension|medida/i.test(q)) topics.push("eett");
+  const eettMatch = q.match(/\d{3}\.\d{3}[b]?/gi);
+  if (eettMatch) { topics.push("eett"); matches.eettCodes.push(...eettMatch.map((c) => c.toUpperCase())); }
+
+  // Detect fecha/calendario
+  if (/fecha|calendario|instalacion|cuando|mes|semana|mayo|junio|julio|agosto|cronograma/i.test(q)) topics.push("fecha");
+
+  // Detect zona
+  if (/zona|zonificacion/i.test(q)) topics.push("zona");
+
+  // Detect familia
+  if (/familia|categoria|tipo de mueble/i.test(q)) topics.push("familia");
+
+  // Default: resumen
+  if (topics.length === 0 || /resumen|general|total|cuantos|inventario completo|todo/i.test(q)) topics.push("resumen");
+
+  return { topics: [...new Set(topics)], matches };
+}
+
+// ── Build targeted context based on detected topics ──
+function buildContext(
+  topics: Topic[],
+  matches: ReturnType<typeof detectTopics>["matches"],
+  idx: DataIndex,
+  summary: SummaryData,
+  eettFiles: EETTFile[],
+): string {
+  const sections: string[] = [];
+
+  // Always include base stats (tiny)
+  sections.push(`HOSPITAL BUIN PAINE - INVENTARIO MOBILIARIO
+Total: ${fmt(summary.totalItems)} artículos, ${fmt(summary.totalQty)} unidades, ${summary.pisos} pisos, ${summary.uniqueServicios} servicios, ${summary.proveedores} proveedores
+Familias: ${sortDesc(idx.byFamilia).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}`);
+
+  for (const topic of topics) {
+    switch (topic) {
+      case "resumen":
+        sections.push(`RESUMEN COMPLETO:
+Recintos: ${fmt(summary.uniqueRecintos)} | Tipos mueble: ${summary.uniqueNombres}
+Proveedores: ${sortDesc(idx.byProveedor).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}
+Pisos: ${Object.entries(idx.byPiso).sort().map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}
+Top 10 productos: ${sortDesc(idx.byNombre).slice(0, 10).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}
+Top 10 servicios: ${sortDesc(idx.byServicio).slice(0, 10).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}`);
+        break;
+
+      case "piso":
+        if (matches.pisos.length > 0) {
+          for (const p of matches.pisos) {
+            const key = `Piso ${p}`;
+            const total = idx.byPiso[key] || 0;
+            // Get products on this floor
+            const prodsOnFloor: [string, number][] = [];
+            for (const [prod, pisos] of Object.entries(idx.prodPiso)) {
+              const qty = pisos[`P${p}`];
+              if (qty) prodsOnFloor.push([prod, qty]);
+            }
+            prodsOnFloor.sort(([, a], [, b]) => b - a);
+            sections.push(`PISO ${p}: ${fmt(total)} unidades total
+Productos: ${prodsOnFloor.map(([k, v]) => `${k}:${v}`).join(", ")}`);
+          }
+        } else {
+          sections.push(`DISTRIBUCIÓN POR PISO:
+${Object.entries(idx.byPiso).sort().map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
+        }
+        break;
+
+      case "servicio":
+        if (matches.servicios.length > 0) {
+          for (const svc of matches.servicios) {
+            const total = idx.byServicio[svc] || 0;
+            const prods = sortDesc(idx.servProd[svc] || {});
+            sections.push(`SERVICIO "${svc}": ${fmt(total)} unidades
+Productos: ${prods.map(([k, v]) => `${k}:${v}`).join(", ")}`);
+          }
+        } else {
+          sections.push(`TODOS LOS SERVICIOS (${summary.uniqueServicios}):
+${sortDesc(idx.byServicio).map(([k, v]) => `${k}: ${fmt(v)}`).join("\n")}`);
+        }
+        break;
+
+      case "producto":
+        if (matches.productos.length > 0) {
+          for (const prod of matches.productos) {
+            // Find exact or partial match
+            const exactKey = Object.keys(idx.byNombre).find((k) => k.toLowerCase().includes(prod.toLowerCase())) || prod;
+            const total = idx.byNombre[exactKey] || 0;
+            const pisos = idx.prodPiso[exactKey] || {};
+            const servs = idx.prodServ[exactKey] || {};
+            const pisoStr = Object.entries(pisos).sort().map(([k, v]) => `${k}:${v}`).join(", ");
+            const servStr = sortDesc(servs).slice(0, 5).map(([k, v]) => `${k}:${v}`).join(", ");
+
+            // Find EETT
+            const eettMatch = eettFiles.find((e) =>
+              e.name.toLowerCase().includes(prod.toLowerCase().split(" ").slice(0, 2).join(" ")) ||
+              prod.toLowerCase().includes(e.name.toLowerCase().split(" ").slice(0, 2).join(" "))
+            );
+            let eettInfo = "";
+            if (eettMatch) {
+              const spec = EETT_KNOWLEDGE[eettMatch.code];
+              if (spec) {
+                eettInfo = `\nFicha EETT ${eettMatch.code}:\n  Descripción: ${spec.desc}\n  Material: ${spec.material}\n  Dimensiones: ${spec.dimensiones}\n  Color: ${spec.color}\n  PDF: [${eettMatch.name}](eett/${eettMatch.file})`;
+              }
+            }
+
+            sections.push(`PRODUCTO "${exactKey}": ${fmt(total)} unidades
+Por piso: ${pisoStr}
+En servicios: ${servStr}${eettInfo}`);
+          }
+        } else {
+          sections.push(`TODOS LOS PRODUCTOS (top 25):
+${sortDesc(idx.byNombre).slice(0, 25).map(([k, v]) => `${k}: ${fmt(v)}`).join("\n")}`);
+        }
+        break;
+
+      case "familia":
+        sections.push(`FAMILIAS:
+${sortDesc(idx.byFamilia).map(([k, v]) => {
+  const prods = Object.entries(idx.byNombre)
+    .filter(([name]) => {
+      if (k === "Silla") return /silla|sillon|butaca|banca|taburete/i.test(name);
+      if (k === "Mesa") return /mesa|escritorio|estacion/i.test(name);
+      return true;
+    })
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([n, q]) => `${n}:${q}`).join(", ");
+  return `${k}: ${fmt(v)} uds — ${prods}`;
+}).join("\n")}`);
+        break;
+
+      case "proveedor":
+        if (matches.proveedores.length > 0) {
+          for (const prov of matches.proveedores) {
+            const total = idx.byProveedor[prov] || 0;
+            const fams = idx.provFam[prov] || {};
+            sections.push(`PROVEEDOR "${prov}": ${fmt(total)} unidades
+Familias: ${Object.entries(fams).map(([k, v]) => `${k}:${v}`).join(", ")}`);
+          }
+        } else {
+          sections.push(`PROVEEDORES:
+${sortDesc(idx.byProveedor).map(([k, v]) => {
+  const fams = Object.entries(idx.provFam[k] || {}).map(([f, q]) => `${f}:${q}`).join(", ");
+  return `${k}: ${fmt(v)} uds (${fams})`;
+}).join("\n")}`);
+        }
+        break;
+
+      case "eett":
+        if (matches.eettCodes.length > 0) {
+          for (const code of matches.eettCodes) {
+            const ef = eettFiles.find((e) => e.code.toUpperCase() === code);
+            const spec = EETT_KNOWLEDGE[code] || EETT_KNOWLEDGE[code.toLowerCase()];
+            if (ef && spec) {
+              sections.push(`FICHA EETT ${ef.code} - ${ef.name}:
+Descripción: ${spec.desc}
+Material: ${spec.material}
+Dimensiones: ${spec.dimensiones}
+Color: ${spec.color}
+PDF: [${ef.name}](eett/${ef.file})`);
+            }
+          }
+        } else if (matches.productos.length > 0) {
+          // EETT for mentioned products — already handled in "producto" topic
+        } else {
+          sections.push(`FICHAS TÉCNICAS EETT (${eettFiles.length} especificaciones):
+${eettFiles.map((e) => {
+  const spec = EETT_KNOWLEDGE[e.code];
+  return spec
+    ? `${e.code} ${e.name}: ${spec.desc}. ${spec.material}. ${spec.dimensiones}. PDF:[${e.name}](eett/${e.file})`
+    : `${e.code} ${e.name}. PDF:[${e.name}](eett/${e.file})`;
+}).join("\n")}`);
+        }
+        break;
+
+      case "fecha":
+        sections.push(`CALENDARIO INSTALACIÓN:
+Período: ${summary.fechaStats?.fechaMin} a ${summary.fechaStats?.fechaMax} (${summary.fechaStats?.totalMeses} meses)
+Por mes: ${summary.byMes?.map((m) => `${m.name}:${fmt(m.qty)}`).join(", ")}
+Por semana: ${summary.bySemana?.map((s) => `${s.name}:${fmt(s.qty)}`).join(", ")}
+Por día: ${summary.byDia?.map((d) => `${d.name}:${fmt(d.qty)}`).join(", ")}`);
+        break;
+
+      case "zona":
+        sections.push(`ZONAS (${summary.uniqueZonas}):
+${sortDesc(idx.byZona).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
+        break;
+    }
+  }
+
+  return sections.join("\n\n");
+}
+
 // ── Ollama API call with STREAMING ──
 async function callOllamaStream(
   messages: { role: string; content: string }[],
@@ -249,7 +409,6 @@ async function callOllamaStream(
     if (done) break;
 
     const chunk = decoder.decode(value, { stream: true });
-    // Each line is a JSON object
     const lines = chunk.split("\n").filter((l) => l.trim());
     for (const line of lines) {
       try {
@@ -259,7 +418,7 @@ async function callOllamaStream(
           onToken(json.message.content);
         }
       } catch {
-        // skip malformed chunks
+        // skip malformed
       }
     }
   }
@@ -267,12 +426,23 @@ async function callOllamaStream(
   return fullText || "Sin respuesta del modelo.";
 }
 
+// ── Base system instruction (short and fixed) ──
+const BASE_SYSTEM = `Eres el asistente IA del Hospital Buin Paine. Respondes sobre el inventario de mobiliario no clínico.
+REGLAS ESTRICTAS:
+- Responde SIEMPRE en español
+- Usa SOLO los datos proporcionados, NO inventes cifras
+- Sé conciso y directo
+- Para tablas usa markdown
+- Si mencionas un PDF, usa formato: [nombre](eett/archivo.pdf)
+- Si no tienes el dato, di "no tengo esa información específica"
+`;
+
 // ── Public API ──
 class ChatServiceClass {
   private data: RawItem[] = [];
   private summary: SummaryData | null = null;
   private eettFiles: EETTFile[] = [];
-  private systemPrompt = "";
+  private idx: DataIndex | null = null;
   private ollamaAvailable: boolean | null = null;
   private conversationHistory: { role: string; content: string }[] = [];
 
@@ -280,7 +450,7 @@ class ChatServiceClass {
     this.data = data;
     this.summary = summary;
     this.eettFiles = eettFiles;
-    this.systemPrompt = buildSystemPrompt(data, summary, eettFiles);
+    this.idx = buildIndex(data);
   }
 
   async checkHealth(): Promise<boolean> {
@@ -307,12 +477,11 @@ class ChatServiceClass {
     | { response: { id: string; response: string; sessionId: string; tokensUsed: number; model: string; timestamp: string }; error: null }
     | { response: null; error: ChatError }
   > {
-    if (!this.summary || this.data.length === 0) {
+    if (!this.summary || !this.idx) {
       return { response: null, error: { error: true, message: "Datos no cargados", code: "NO_DATA" } };
     }
 
     const isOllamaUp = await this.checkHealth();
-
     if (!isOllamaUp) {
       return {
         response: null,
@@ -320,29 +489,33 @@ class ChatServiceClass {
           error: true,
           message: "Ollama no está disponible",
           code: "OLLAMA_UNAVAILABLE",
-          suggestion: "Inicia Ollama en tu computador: ejecuta 'ollama serve' y luego 'ollama pull mistral'. El chat requiere Ollama corriendo en localhost:11434.",
+          suggestion: "Inicia Ollama: ejecuta 'ollama serve' y 'ollama pull qwen2:1.5b'. Requiere Ollama en localhost:11434.",
         },
       };
     }
 
     try {
+      // Detect what the user is asking about
+      const { topics, matches } = detectTopics(message);
+
+      // Build targeted context (only relevant data)
+      const context = buildContext(topics, matches, this.idx, this.summary, this.eettFiles);
+
       // Add user message to conversation
       this.conversationHistory.push({ role: "user", content: message });
-
-      // Keep last 6 messages to reduce context size
       if (this.conversationHistory.length > 6) {
         this.conversationHistory = this.conversationHistory.slice(-6);
       }
 
-      // Build messages array for Ollama
+      // System = base instructions + targeted context
+      const systemPrompt = `${BASE_SYSTEM}\nDATOS RELEVANTES:\n${context}`;
+
       const ollamaMessages = [
-        { role: "system", content: this.systemPrompt },
+        { role: "system", content: systemPrompt },
         ...this.conversationHistory,
       ];
 
       const answer = await callOllamaStream(ollamaMessages, onToken || (() => {}));
-
-      // Add assistant response to history
       this.conversationHistory.push({ role: "assistant", content: answer });
 
       return {
@@ -357,7 +530,6 @@ class ChatServiceClass {
         error: null,
       };
     } catch (err) {
-      // Reset availability on error
       this.ollamaAvailable = null;
       const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
       return {
