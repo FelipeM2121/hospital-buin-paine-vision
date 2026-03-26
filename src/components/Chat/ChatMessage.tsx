@@ -28,7 +28,10 @@ function renderMarkdown(text: string): React.ReactNode[] {
         parts.push(<strong key={key++} style={{ fontWeight: 600 }}>{match[1]}</strong>);
       } else if (match[2] && match[3]) {
         let href = match[3];
-        if (!href.startsWith("http") && !href.startsWith("/")) href = `${BASE}${href}`;
+        if (!href.startsWith("http") && !href.startsWith("/")) {
+          const encoded = href.split("/").map(encodeURIComponent).join("/");
+          href = `${BASE}${encoded}`;
+        }
         parts.push(
           <a key={key++} href={href} target="_blank" rel="noopener noreferrer" style={{
             color: "#CF6E4A", textDecoration: "underline", textUnderlineOffset: "3px",
