@@ -273,7 +273,10 @@ function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[
   }
 
   // Default: resumen siempre incluido para contexto base
-  if (topics.length === 0 || /resumen|general|total|cuantos|inventario completo|todo|lista|listado|dame|dime|muestra|explica/i.test(q)) topics.push("resumen");
+  if (topics.length === 0 || /resumen|general|total|cuantos|inventario completo|todo|lista|listado|dame|dime|muestra|explica|detalle/i.test(q)) topics.push("resumen");
+
+  // Si hay resumen, siempre incluir desglose de familias con productos
+  if (topics.includes("resumen")) topics.push("familia");
 
   return { topics: [...new Set(topics)], matches };
 }
@@ -301,6 +304,9 @@ Familias: ${sortDesc(idx.byFamilia).map(([k, v]) => `${k}: ${fmt(v)} uds`).join(
 Recintos únicos: ${fmt(summary.uniqueRecintos)} | Tipos de mueble distintos: ${summary.uniqueNombres}
 Zonas: ${sortDesc(idx.byZona).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}
 
+FAMILIAS DE MUEBLES (IMPORTANTE - menciona TODAS en tu respuesta):
+${sortDesc(idx.byFamilia).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}
+
 TODOS LOS PROVEEDORES:
 ${sortDesc(idx.byProveedor).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}
 
@@ -311,10 +317,7 @@ TODOS LOS PRODUCTOS (${Object.keys(idx.byNombre).length} tipos):
 ${sortDesc(idx.byNombre).map(([k, v]) => `${k}: ${fmt(v)}`).join(", ")}
 
 TODOS LOS SERVICIOS (${Object.keys(idx.byServicio).length}):
-${sortDesc(idx.byServicio).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}
-
-FAMILIAS DE MUEBLES:
-${sortDesc(idx.byFamilia).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
+${sortDesc(idx.byServicio).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
         break;
 
       case "piso":
@@ -539,6 +542,9 @@ CÓMO RESPONDER:
 - Si el usuario pregunta "cuántos/cuántas X", responde con el número exacto del inventario
 - Si pregunta por un servicio que no aparece en los datos, responde que no hay registros para ese servicio
 - Para PDFs de EETT: copia EXACTAMENTE el link que aparece en los datos con formato PDF:[nombre](eett/EETT%20...) — NUNCA inventes ni simplifiques el nombre del archivo
+
+REGLA CRITICA SOBRE FAMILIAS DE MUEBLES:
+Cuando des cualquier resumen o detalle general del inventario, SIEMPRE debes mencionar TODAS las familias con sus totales exactos. Las familias son: Silla, Mesa, Otro, Mobiliario. NUNCA omitas la familia "Silla" — es la más grande del inventario. Si los datos muestran "FAMILIAS CON TODOS SUS PRODUCTOS", incluye TODAS en tu respuesta sin excepción.
 
 TIPOS DE PREGUNTAS QUE PUEDES RESPONDER:
 - Totales globales: "¿cuántos muebles hay en total?"
