@@ -79,15 +79,6 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
     ChatService.clearHistory();
   };
 
-  const suggestions = [
-    "Resumen general del inventario",
-    "¿Cuántas sillas hay en total?",
-    "Distribución por piso",
-    "¿Qué servicios tienen más muebles?",
-    "Muebles en Urgencia",
-    "Productos de MELMAN SPA",
-  ];
-
   const isEmpty = messages.length === 0 && !error;
 
   return (
@@ -130,7 +121,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
           <div style={{
             flex: 1, display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
-            gap: "24px", padding: "60px 24px 40px",
+            padding: "60px 24px 40px",
           }}>
             <div style={{
               fontSize: "28px", fontWeight: 600,
@@ -138,39 +129,6 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
               letterSpacing: "-0.5px", lineHeight: 1.2,
             }}>
               ¿En qué puedo ayudarte?
-            </div>
-
-            <div style={{
-              display: "flex", flexWrap: "wrap", gap: "8px",
-              justifyContent: "center", maxWidth: "640px",
-            }}>
-              {suggestions.map((s) => (
-                <button key={s} onClick={() => handleSendMessage(s)} style={{
-                  background: "#fff",
-                  border: "1px solid #E8E3DC",
-                  borderRadius: "20px",
-                  padding: "9px 18px",
-                  fontSize: "13.5px",
-                  color: "#3D3B38",
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                  lineHeight: 1.3,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#F5F2EC";
-                    e.currentTarget.style.borderColor = "#C9623F";
-                    e.currentTarget.style.color = "#C9623F";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "#fff";
-                    e.currentTarget.style.borderColor = "#E8E3DC";
-                    e.currentTarget.style.color = "#3D3B38";
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
             </div>
           </div>
         )}
