@@ -129,7 +129,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
             <img
               src={`${import.meta.env.BASE_URL}logo-buin-paine.png`}
               alt="Hospital Buin Paine"
-              style={{ height: 64, width: "auto", objectFit: "contain" }}
+              style={{ height: 90, width: "auto", objectFit: "contain" }}
             />
             <div style={{
               fontSize: "34px", fontWeight: 700,
