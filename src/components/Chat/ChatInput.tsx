@@ -72,7 +72,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder="Pregunta sobre el inventario…"
+          placeholder="Pregunta sobre Mobiliario No Clínico…"
           disabled={isLoading || disabled}
           rows={1}
           style={{
