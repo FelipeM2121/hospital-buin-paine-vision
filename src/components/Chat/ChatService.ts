@@ -65,6 +65,14 @@ const EETT_KNOWLEDGE: Record<string, { desc: string; material: string; dimension
 };
 
 // ── Pre-computed data indexes (built once on setData) ──
+interface RecintoInfo {
+  piso: number;
+  servicio: string;
+  zona: string;
+  qty: number;
+  prods: Record<string, number>;
+}
+
 interface DataIndex {
   byFamilia: Record<string, number>;
   byProveedor: Record<string, number>;
@@ -79,6 +87,8 @@ interface DataIndex {
   provProd: Record<string, Record<string, number>>;
   pisoServ: Record<number, Record<string, number>>;
   famProd: Record<string, Record<string, number>>;
+  recintoDetail: Record<string, RecintoInfo>;
+  servRecintos: Record<string, string[]>;
 }
 
 function buildIndex(data: RawItem[]): DataIndex {
@@ -86,6 +96,7 @@ function buildIndex(data: RawItem[]): DataIndex {
     byFamilia: {}, byProveedor: {}, byPiso: {}, byServicio: {},
     byNombre: {}, byZona: {}, servProd: {}, prodPiso: {}, prodServ: {},
     provFam: {}, provProd: {}, pisoServ: {}, famProd: {},
+    recintoDetail: {}, servRecintos: {},
   };
 
   data.forEach((i) => {
@@ -119,6 +130,17 @@ function buildIndex(data: RawItem[]): DataIndex {
     // Familia → Productos
     if (!idx.famProd[i.familia]) idx.famProd[i.familia] = {};
     idx.famProd[i.familia][i.nombre] = (idx.famProd[i.familia][i.nombre] || 0) + i.cantidad;
+
+    // Recinto → detalle completo
+    if (!idx.recintoDetail[i.recinto]) {
+      idx.recintoDetail[i.recinto] = { piso: i.piso, servicio: i.servicio, zona: i.zona, qty: 0, prods: {} };
+    }
+    idx.recintoDetail[i.recinto].qty += i.cantidad;
+    idx.recintoDetail[i.recinto].prods[i.nombre] = (idx.recintoDetail[i.recinto].prods[i.nombre] || 0) + i.cantidad;
+
+    // Servicio → lista de recintos
+    if (!idx.servRecintos[i.servicio]) idx.servRecintos[i.servicio] = [];
+    if (!idx.servRecintos[i.servicio].includes(i.recinto)) idx.servRecintos[i.servicio].push(i.recinto);
   });
 
   return idx;
@@ -128,13 +150,13 @@ const sortDesc = (obj: Record<string, number>) =>
   Object.entries(obj).sort(([, a], [, b]) => b - a);
 
 // ── Detect what the user is asking about ──
-type Topic = "resumen" | "piso" | "servicio" | "producto" | "proveedor" | "eett" | "fecha" | "zona" | "familia";
+type Topic = "resumen" | "piso" | "servicio" | "producto" | "proveedor" | "eett" | "fecha" | "zona" | "familia" | "recinto";
 
-function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[]; servicios: string[]; productos: string[]; proveedores: string[]; eettCodes: string[] } } {
+function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[]; servicios: string[]; productos: string[]; proveedores: string[]; eettCodes: string[]; recintos: string[] } } {
   const q = msg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   const topics: Topic[] = [];
-  const matches = { pisos: [] as number[], servicios: [] as string[], productos: [] as string[], proveedores: [] as string[], eettCodes: [] as string[] };
+  const matches = { pisos: [] as number[], servicios: [] as string[], productos: [] as string[], proveedores: [] as string[], eettCodes: [] as string[], recintos: [] as string[] };
 
   // Detect piso — también números escritos como palabras
   const pisoMatch = q.match(/piso\s*(\d)/g);
@@ -278,6 +300,9 @@ function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[
   // Si hay resumen, siempre incluir desglose de familias con productos
   if (topics.includes("resumen")) topics.push("familia");
 
+  // Detect recinto keywords
+  if (/recinto|sala|box|oficina|bodega|pasillo|hall|bano|baño|comedor|vestuario|biblioteca|auditorio|laboratorio|farmacia|pabellon|pabellón|habitacion|habitación/i.test(q)) topics.push("recinto");
+
   return { topics: [...new Set(topics)], matches };
 }
 
@@ -288,6 +313,7 @@ function buildContext(
   idx: DataIndex,
   summary: SummaryData,
   eettFiles: EETTFile[],
+  originalMsg: string = "",
 ): string {
   const sections: string[] = [];
 
@@ -368,7 +394,21 @@ ${eettFiles.map((e) => {
     : `  ${e.code} — ${e.name}\n    PDF: [${e.name}](${link})`;
 }).join("\n\n")}`);
 
-  // ═══ 10. DETALLE EXTRA para productos/servicios/pisos mencionados explícitamente ═══
+  // ═══ 10. RECINTOS COMPLETOS POR SERVICIO ═══
+  const totalRecintos = Object.keys(idx.recintoDetail).length;
+  sections.push(`══ RECINTOS (${totalRecintos} recintos únicos) ══
+${sortDesc(idx.byServicio).map(([svc]) => {
+  const recintos = idx.servRecintos[svc] || [];
+  const recintoLines = recintos.map((r) => {
+    const info = idx.recintoDetail[r];
+    if (!info) return `    ${r}`;
+    const prodStr = Object.entries(info.prods).sort(([,a],[,b]) => b-a).map(([n, q]) => `${n}: ${fmt(q)}`).join(", ");
+    return `    ${r} (Piso ${info.piso}, ${fmt(info.qty)} uds): ${prodStr}`;
+  }).join("\n");
+  return `  ${svc} (${recintos.length} recintos):\n${recintoLines}`;
+}).join("\n\n")}`);
+
+  // ═══ 11. DETALLE EXTRA para productos/servicios/pisos mencionados explícitamente ═══
   if (matches.productos.length > 0) {
     const extras: string[] = [];
     for (const prod of matches.productos) {
@@ -389,6 +429,22 @@ ${eettFiles.map((e) => {
       extras.push(`  CONSULTA SOBRE "${exactKey}": ${fmt(total)} unidades en total\n  Por servicio:\n${servStr}${eettInfo}`);
     }
     if (extras.length > 0) sections.unshift(`══ DATOS ESPECÍFICOS CONSULTADOS ══\n${extras.join("\n\n")}`);
+  }
+
+  // Detección de recintos específicos mencionados en la consulta
+  if (originalMsg) {
+    const msgNorm = originalMsg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const matchedRecintos = Object.keys(idx.recintoDetail).filter((r) =>
+      msgNorm.includes(r.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+    );
+    if (matchedRecintos.length > 0) {
+      const recintoExtras = matchedRecintos.map((r) => {
+        const info = idx.recintoDetail[r];
+        const prodStr = Object.entries(info.prods).sort(([,a],[,b]) => b-a).map(([n, q]) => `    ${n}: ${fmt(q)} uds`).join("\n");
+        return `  RECINTO "${r}":\n    Piso: ${info.piso} | Servicio: ${info.servicio} | Zona: ${info.zona}\n    Total: ${fmt(info.qty)} unidades\n    Contenido:\n${prodStr}`;
+      });
+      sections.unshift(`══ RECINTOS ESPECÍFICOS CONSULTADOS ══\n${recintoExtras.join("\n\n")}`);
+    }
   }
 
   return sections.join("\n\n");
@@ -535,8 +591,8 @@ class ChatServiceClass {
       // Detect what the user is asking about
       const { topics, matches } = detectTopics(message);
 
-      // Build targeted context (only relevant data)
-      const context = buildContext(topics, matches, this.idx, this.summary, this.eettFiles);
+      // Build full context with all inventory data
+      const context = buildContext(topics, matches, this.idx, this.summary, this.eettFiles, message);
 
       // Add user message to conversation
       this.conversationHistory.push({ role: "user", content: message });
