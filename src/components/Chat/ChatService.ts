@@ -136,93 +136,144 @@ function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[
   const topics: Topic[] = [];
   const matches = { pisos: [] as number[], servicios: [] as string[], productos: [] as string[], proveedores: [] as string[], eettCodes: [] as string[] };
 
-  // Detect piso
+  // Detect piso — también números escritos como palabras
   const pisoMatch = q.match(/piso\s*(\d)/g);
   if (pisoMatch) {
     topics.push("piso");
     pisoMatch.forEach((m) => { const n = parseInt(m.replace(/\D/g, "")); if (n >= 1 && n <= 7) matches.pisos.push(n); });
   }
-  if (/pisos|distribuc.*piso|por piso/i.test(q)) topics.push("piso");
+  if (/pisos|distribuc.*piso|por piso|cada piso|nivel/i.test(q)) topics.push("piso");
 
-  // Detect servicio
+  // Detect servicio — lista ampliada
   const servicioKeywords: Record<string, string> = {
-    "urgencia": "Urgencia", "administracion": "Administración y apoyo general", "admin": "Administración y apoyo general",
-    "consulta": "Consultas medicas generales", "comedor": "Comedor funcionarios/público",
-    "sala cuna": "Sala Cuna", "hospitalizacion": "Hospitalización", "hospital de dia": "Hospital de día",
-    "psiquiatria": "Psiquiatría", "uhcip": "UHCIP", "laboratorio": "Laboratorio",
-    "rehabilitacion": "Med física y rehabilitación", "imagenologia": "Imagenología",
-    "pabellones": "Pabellones", "pabellon": "Pabellones", "contabilidad": "Contabilidad",
-    "dialisis": "Diálisis", "farmacia": "Farmacia", "uti": "UTI",
-    "alimentacion": "Central de Alimentación", "odontologia": "Odontología",
-    "cafeteria": "Cafetería", "mantenimiento": "Mantenimiento", "biblioteca": "Biblioteca",
-    "parto": "Parto Integral", "paliativos": "Cuidados Paliativos", "cuidados paliativos": "Cuidados Paliativos",
-    "vestuario": "Vestuario", "auditorio": "Auditorio", "abastecimiento": "Abastecimiento",
-    "esterilizacion": "Esterilización", "neonatologia": "Neonatología", "sedile": "SEDILE",
-    "lavanderia": "Lavandería", "morgue": "Morgue", "telemedicina": "Telemedicina",
-    "cirugia": "Cirugía menor", "chile crece": "Chile Crece Contigo",
+    "urgencia": "Urgencia",
+    "administracion": "Administración y apoyo general", "admin": "Administración y apoyo general", "apoyo general": "Administración y apoyo general",
+    "consulta": "Consultas medicas generales", "consultas medicas": "Consultas medicas generales", "medicas generales": "Consultas medicas generales",
+    "comedor": "Comedor funcionarios/público", "casino": "Comedor funcionarios/público",
+    "sala cuna": "Sala Cuna", "sala-cuna": "Sala Cuna",
+    "hospitalizacion": "Hospitalización", "hospitalizados": "Hospitalización",
+    "hospital de dia": "Hospital de día", "hosp dia": "Hospital de día",
+    "psiquiatria": "Psiquiatría", "psiqui": "Psiquiatría",
+    "uhcip": "UHCIP",
+    "laboratorio": "Laboratorio", "lab": "Laboratorio",
+    "rehabilitacion": "Med física y rehabilitación", "fisioterapia": "Med física y rehabilitación", "kinesiologia": "Med física y rehabilitación", "med fisica": "Med física y rehabilitación",
+    "imagenologia": "Imagenología", "radiologia": "Imagenología", "rayos": "Imagenología",
+    "pabellones": "Pabellones", "pabellon": "Pabellones", "quirofano": "Pabellones",
+    "contabilidad": "Contabilidad", "finanzas": "Contabilidad",
+    "dialisis": "Diálisis",
+    "farmacia": "Farmacia",
+    "uti": "UTI", "unidad de cuidados intensivos": "UTI", "uci": "UTI",
+    "alimentacion": "Central de Alimentación", "cocina": "Central de Alimentación", "central alimentacion": "Central de Alimentación",
+    "odontologia": "Odontología", "dental": "Odontología",
+    "cafeteria": "Cafetería",
+    "mantenimiento": "Mantenimiento",
+    "biblioteca": "Biblioteca",
+    "parto": "Parto Integral", "maternidad": "Parto Integral",
+    "paliativos": "Cuidados Paliativos", "cuidados paliativos": "Cuidados Paliativos",
+    "vestuario": "Vestuario",
+    "auditorio": "Auditorio",
+    "abastecimiento": "Abastecimiento", "bodega": "Abastecimiento",
+    "esterilizacion": "Esterilización", "esteriliz": "Esterilización",
+    "neonatologia": "Neonatología", "neonato": "Neonatología",
+    "sedile": "SEDILE",
+    "lavanderia": "Lavandería",
+    "morgue": "Morgue",
+    "telemedicina": "Telemedicina",
+    "cirugia menor": "Cirugía menor", "cirugia": "Cirugía menor",
+    "chile crece": "Chile Crece Contigo",
+    "rrhh": "Recursos Humanos", "recursos humanos": "Recursos Humanos",
+    "informatica": "Informática", "sistemas": "Informática",
+    "direccion": "Dirección", "gerencia": "Dirección",
+    "oncologia": "Oncología",
+    "cardiologia": "Cardiología",
+    "pediatria": "Pediatría",
+    "ginecologia": "Ginecología",
+    "traumatologia": "Traumatología",
+    "neurologia": "Neurología",
+    "dermatologia": "Dermatología",
   };
   for (const [kw, svc] of Object.entries(servicioKeywords)) {
-    if (q.includes(kw)) { topics.push("servicio"); matches.servicios.push(svc); }
+    if (q.includes(kw)) { topics.push("servicio"); if (!matches.servicios.includes(svc)) matches.servicios.push(svc); }
   }
-  if (/servicios|por servicio/i.test(q) && matches.servicios.length === 0) topics.push("servicio");
+  if (/servicios|por servicio|cada servicio|todos los servicios/i.test(q) && matches.servicios.length === 0) topics.push("servicio");
 
-  // Detect producto
+  // Detect producto — lista ampliada con más variantes
   const productoKeywords: Record<string, string> = {
-    "silla visita": "Silla Visita", "silla ergonomica": "Silla Ergonómica", "ergonomica": "Silla Ergonómica",
-    "silla casino": "Silla tipo Casino", "silla tipo casino": "Silla tipo Casino",
-    "butaca": "Silla Butaca Espera 3 Cuerpos", "sillon bergere": "Sillón Bergere", "bergere": "Sillón Bergere",
-    "escritorio en l": "Escritorio en L Administrativo", "escritorio simple": "Escritorio simple 120x70 cm",
-    "escritorio administrativo": "Escritorio en L Administrativo",
-    "sillon 2 cuerpo": "Sillón 2 Cuerpo", "sillon 1 cuerpo": "Sillón 1 Cuerpo",
-    "mesa casino": "Mesa Tipo Casino", "mesa reunion": "Mesa Reuniones Tipo I",
-    "biblioteca": "Mueble Tipo Biblioteca A", "mueble biblioteca": "Mueble Tipo Biblioteca A",
-    "banca madera": "Banca Madera B", "banca": "Banca Madera B",
-    "escritorio consulta": "Escritorio de Consultas", "punto de registro": "Punto de Registro",
-    "colchoneta": "Colchoneta Reposo A", "silla parvulo": "Silla Párvulo", "parvulo": "Silla Párvulo",
-    "silla universitaria": "Silla Tipo Universitaria", "universitaria": "Silla Tipo Universitaria",
-    "mesa lateral": "Mesa Lateral", "perchero": "Perchero", "velador": "Velador",
-    "cama apilable": "Cama Apilable", "locker": "Mueble Locker", "cuna": "Cuna Alta",
-    "silla lactante": "Silla Lactante", "silla bacinica": "Silla Bacínica", "bacinica": "Silla Bacínica",
-    "taburete": "Taburete con Ruedas", "atril": "Atril Graduable",
-    "silla ingesta": "Silla de Apoyo Hora Ingesta", "ingesta": "Silla de Apoyo Hora Ingesta",
-    "mesa parvulo": "Mesa Párvulo Tipo I", "contenedor": "Contenedor",
-    "librero": "Librero", "arrimo": "Mueble Arrimo", "silla adulto": "Silla Adulto",
-    "estacion de trabajo": "Estación de Trabajo",
+    "silla visita": "Silla Visita", "silla de visita": "Silla Visita", "sillas de visita": "Silla Visita",
+    "silla ergonomica": "Silla Ergonómica", "ergonomica": "Silla Ergonómica", "silla de oficina": "Silla Ergonómica",
+    "silla casino": "Silla tipo Casino", "silla tipo casino": "Silla tipo Casino", "sillas de comedor": "Silla tipo Casino",
+    "butaca": "Silla Butaca Espera 3 Cuerpos", "butacas": "Silla Butaca Espera 3 Cuerpos",
+    "sillon bergere": "Sillón Bergere", "bergere": "Sillón Bergere", "sillon reclinable": "Sillón Bergere",
+    "escritorio en l": "Escritorio en L Administrativo", "escritorio l": "Escritorio en L Administrativo",
+    "escritorio simple": "Escritorio simple 120x70 cm", "escritorio 120": "Escritorio simple 120x70 cm",
+    "escritorio administrativo": "Escritorio en L Administrativo", "escritorio": "Escritorio en L Administrativo",
+    "sillon 2 cuerpo": "Sillón 2 Cuerpo", "sofa 2": "Sillón 2 Cuerpo",
+    "sillon 1 cuerpo": "Sillón 1 Cuerpo", "sofa 1": "Sillón 1 Cuerpo",
+    "mesa casino": "Mesa Tipo Casino", "mesa comedor": "Mesa Tipo Casino",
+    "mesa reunion": "Mesa Reuniones Tipo I", "mesa de reuniones": "Mesa Reuniones Tipo I", "mesa conferencia": "Mesa Reuniones Tipo I",
+    "mueble biblioteca": "Mueble Tipo Biblioteca A", "estanteria": "Mueble Tipo Biblioteca A",
+    "banca madera": "Banca Madera B", "banca de madera": "Banca Madera B", "banca": "Banca Madera B",
+    "escritorio consulta": "Escritorio de Consultas", "escritorio clinico": "Escritorio de Consultas",
+    "punto de registro": "Punto de Registro",
+    "colchoneta": "Colchoneta Reposo A", "colchon": "Colchoneta Reposo A",
+    "silla parvulo": "Silla Párvulo", "silla infantil": "Silla Párvulo", "silla niño": "Silla Párvulo",
+    "silla universitaria": "Silla Tipo Universitaria", "universitaria": "Silla Tipo Universitaria", "silla con paleta": "Silla Tipo Universitaria",
+    "mesa lateral": "Mesa Lateral", "mesita lateral": "Mesa Lateral",
+    "perchero": "Perchero", "colgador": "Perchero",
+    "velador": "Velador", "mesa de noche": "Velador",
+    "cama apilable": "Cama Apilable", "cama para niños": "Cama Apilable",
+    "locker": "Mueble Locker", "casillero": "Mueble Locker",
+    "cuna": "Cuna Alta", "cuna hospitalaria": "Cuna Alta",
+    "silla lactante": "Silla Lactante", "silla amamantar": "Silla Lactante",
+    "silla bacinica": "Silla Bacínica", "bacinica": "Silla Bacínica", "silla higienica": "Silla Bacínica",
+    "taburete": "Taburete con Ruedas", "taburete ruedas": "Taburete con Ruedas",
+    "atril": "Atril Graduable",
+    "silla ingesta": "Silla de Apoyo Hora Ingesta", "ingesta": "Silla de Apoyo Hora Ingesta", "silla alimentacion": "Silla de Apoyo Hora Ingesta",
+    "mesa parvulo": "Mesa Párvulo Tipo I", "mesa infantil": "Mesa Párvulo Tipo I", "mesa niños": "Mesa Párvulo Tipo I",
+    "contenedor": "Contenedor", "contenedor almacenamiento": "Contenedor",
+    "librero": "Librero", "estante libros": "Librero",
+    "mueble arrimo": "Mueble Arrimo", "arrimo": "Mueble Arrimo", "credenza": "Mueble Arrimo",
+    "silla adulto": "Silla Adulto", "silla multiuso": "Silla Adulto", "silla apilable": "Silla Adulto",
+    "estacion de trabajo": "Estación de Trabajo", "puesto de trabajo": "Estación de Trabajo", "workstation": "Estación de Trabajo",
   };
   for (const [kw, prod] of Object.entries(productoKeywords)) {
-    if (q.includes(kw)) { topics.push("producto"); matches.productos.push(prod); }
+    if (q.includes(kw)) { topics.push("producto"); if (!matches.productos.includes(prod)) matches.productos.push(prod); }
   }
-  // Generic product queries
-  if (/productos|muebles|mobiliario|por producto|cuantos tipos/i.test(q) && matches.productos.length === 0) topics.push("producto");
-  if (/sillas|mesas|sillones|escritorios|bancas/i.test(q) && matches.productos.length === 0) topics.push("familia");
+  // Detectar familias genéricas
+  if (/sillas\b|cuantas sillas/i.test(q) && matches.productos.length === 0) topics.push("familia");
+  if (/mesas\b|cuantas mesas/i.test(q) && matches.productos.length === 0) topics.push("familia");
+  if (/sillones\b|cuantos sillones/i.test(q) && matches.productos.length === 0) topics.push("familia");
+  if (/escritorios\b|cuantos escritorios/i.test(q) && matches.productos.length === 0) topics.push("familia");
+  if (/bancas\b|cuantas bancas/i.test(q) && matches.productos.length === 0) topics.push("familia");
+  if (/productos|muebles|mobiliario|por producto|cuantos tipos|tipos de mueble/i.test(q) && matches.productos.length === 0) topics.push("producto");
 
-  // Detect proveedor
+  // Detect proveedor — lista ampliada
   if (/melman/i.test(q)) { topics.push("proveedor"); matches.proveedores.push("MELMAN SPA"); }
   if (/allmedica/i.test(q)) { topics.push("proveedor"); matches.proveedores.push("ALLMEDICA"); }
   if (/hagelin/i.test(q)) { topics.push("proveedor"); matches.proveedores.push("COMERCIAL HAGELIN"); }
-  if (/proveedor/i.test(q) && matches.proveedores.length === 0) topics.push("proveedor");
+  if (/proveedor|empresa|fabricante|marca/i.test(q) && matches.proveedores.length === 0) topics.push("proveedor");
 
   // Detect EETT / ficha técnica
-  if (/eett|ficha tecnica|especificacion|material|dimension|medida/i.test(q)) topics.push("eett");
+  if (/eett|ficha tecnica|especificacion|especificaciones|material|dimension|medida|caracteristica/i.test(q)) topics.push("eett");
   const eettMatch = q.match(/\d{3}\.\d{3}[b]?/gi);
   if (eettMatch) { topics.push("eett"); matches.eettCodes.push(...eettMatch.map((c) => c.toUpperCase())); }
 
   // Detect fecha/calendario
-  if (/fecha|calendario|instalacion|cuando|mes|semana|mayo|junio|julio|agosto|cronograma/i.test(q)) topics.push("fecha");
+  if (/fecha|calendario|instalacion|cuando|mes\b|semana|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre|enero|febrero|marzo|abril|cronograma|periodo/i.test(q)) topics.push("fecha");
 
   // Detect zona
-  if (/zona|zonificacion/i.test(q)) topics.push("zona");
+  if (/zona|zonificacion|sector/i.test(q)) topics.push("zona");
 
   // Detect familia
-  if (/familia|categoria|tipo de mueble/i.test(q)) topics.push("familia");
+  if (/familia|categoria|tipo de mueble|grupos de mueble/i.test(q)) topics.push("familia");
 
-  // Comparaciones, rankings, más/menos
-  if (/mas muebles|menos muebles|mayor cantidad|menor cantidad|ranking|top|cuanto tiene|cuantos tienen|comparar|diferencia|porcentaje/i.test(q)) {
-    if (topics.length === 0) topics.push("resumen");
+  // Comparaciones, rankings, preguntas de cantidad genéricas → resumen completo
+  if (/mas muebles|menos muebles|mayor cantidad|menor cantidad|ranking|top \d|cuanto tiene|cuantos tienen|comparar|diferencia|porcentaje|proporcion|cuantos hay|cuantas hay|hay en total|en total/i.test(q)) {
+    topics.push("resumen");
   }
 
-  // Default: resumen
-  if (topics.length === 0 || /resumen|general|total|cuantos|inventario completo|todo|lista|listado/i.test(q)) topics.push("resumen");
+  // Default: resumen siempre incluido para contexto base
+  if (topics.length === 0 || /resumen|general|total|cuantos|inventario completo|todo|lista|listado|dame|dime|muestra|explica/i.test(q)) topics.push("resumen");
 
   return { topics: [...new Set(topics)], matches };
 }
@@ -237,10 +288,11 @@ function buildContext(
 ): string {
   const sections: string[] = [];
 
-  // Always include base stats (tiny)
-  sections.push(`HOSPITAL BUIN PAINE - INVENTARIO MOBILIARIO
-Total: ${fmt(summary.totalItems)} artículos, ${fmt(summary.totalQty)} unidades, ${summary.pisos} pisos, ${summary.uniqueServicios} servicios, ${summary.proveedores} proveedores
-Familias: ${sortDesc(idx.byFamilia).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}`);
+  // Always include base stats
+  sections.push(`HOSPITAL BUIN PAINE - INVENTARIO MOBILIARIO NO CLÍNICO
+Total general: ${fmt(summary.totalQty)} unidades en ${fmt(summary.totalItems)} artículos distintos
+Pisos: ${summary.pisos} | Servicios: ${summary.uniqueServicios} | Proveedores: ${summary.proveedores} | Recintos: ${fmt(summary.uniqueRecintos)}
+Familias: ${sortDesc(idx.byFamilia).map(([k, v]) => `${k}: ${fmt(v)} uds`).join(" | ")}`);
 
   for (const topic of topics) {
     switch (topic) {
@@ -471,26 +523,35 @@ async function callClaudeStream(
 }
 
 // ── Base system instruction ──
-const BASE_SYSTEM = `Eres el asistente IA del Hospital Buin Paine, experto en el inventario de mobiliario no clínico del hospital.
+const BASE_SYSTEM = `Eres el asistente IA oficial del Hospital Buin Paine, especializado en el inventario de mobiliario no clínico del hospital (Sistema SGD).
 
-CONTEXTO DEL SISTEMA:
-El Dashboard SGD (Sistema de Gestión de Documentos) registra todo el mobiliario no clínico instalado en el Hospital Buin Paine. Los datos incluyen: artículos, zonas, servicios, familias de muebles, nombres de productos, proveedores, cantidades, pisos, recintos y fechas de instalación.
+CONTEXTO:
+El sistema SGD registra todo el mobiliario no clínico instalado. Los datos incluyen: productos, familias de muebles, proveedores, cantidades, pisos, servicios, zonas, recintos y fechas de instalación.
 
-CAPACIDADES:
-- Puedes responder sobre TODOS los datos del inventario: totales, distribuciones, comparaciones, rankings, búsquedas específicas
-- Puedes comparar servicios, pisos, productos y proveedores entre sí
-- Puedes calcular porcentajes y proporciones basándote en los datos
-- Puedes describir fichas técnicas (EETT) de productos cuando tengas el código
-- Puedes responder preguntas sobre qué hay en cada piso, servicio o zona
+CÓMO RESPONDER:
+- Responde SIEMPRE en español, de forma clara y directa
+- Usa SOLO los números y datos que aparecen en el contexto "DATOS RELEVANTES"
+- NUNCA inventes ni estimes cifras — si el dato exacto no está, dilo
+- Para comparaciones de 4 o más elementos, usa tabla markdown con columnas alineadas
+- Para listas de 3 o menos, usa viñetas o texto corrido
+- Cita números exactos: "hay 342 sillas", no "hay aproximadamente 300"
+- Si el usuario pregunta "cuántos/cuántas X", responde con el número exacto del inventario
+- Si pregunta por un servicio que no aparece en los datos, responde que no hay registros para ese servicio
+- Si mencionas un PDF de EETT, usa el formato: [nombre del producto](eett/archivo.pdf)
 
-REGLAS:
-- Responde SIEMPRE en español
-- Usa SOLO los datos proporcionados, NUNCA inventes cifras
-- Usa tablas markdown cuando compares más de 3 elementos
-- Sé preciso y cita números exactos
-- Si mencionas un PDF de EETT, usa: [nombre](eett/archivo.pdf)
-- Si la pregunta es sobre algo que claramente está en los datos, respóndela completa
-- Solo di "no tengo esa información" si realmente no está en los datos recibidos
+TIPOS DE PREGUNTAS QUE PUEDES RESPONDER:
+- Totales globales: "¿cuántos muebles hay en total?"
+- Por piso: "¿qué hay en el piso 3?"
+- Por servicio: "¿cuántos muebles tiene Urgencia?"
+- Por producto: "¿cuántas sillas ergonómicas hay?"
+- Por proveedor: "¿qué productos suministró MELMAN SPA?"
+- Por familia: "¿cuántas sillas hay en total?"
+- Comparaciones: "¿qué servicio tiene más muebles?"
+- Rankings: "top 5 servicios con más muebles"
+- Porcentajes: "¿qué porcentaje del inventario es de ALLMEDICA?"
+- Fichas técnicas EETT: "dimensiones de la silla ergonómica"
+- Cronograma: "¿cuándo se instalaron los muebles?"
+- Distribución: "¿cómo se distribuye el inventario por piso?"
 `;
 
 // ── Public API ──
