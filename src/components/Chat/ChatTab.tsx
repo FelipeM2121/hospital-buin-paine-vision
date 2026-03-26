@@ -88,7 +88,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
     <div style={{
       display: "flex", flexDirection: "column",
       height: "100vh",
-      background: "#FAFAF8",
+      background: "#f0f6fa",
       position: "relative",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
@@ -98,7 +98,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "12px 20px",
         borderBottom: "1px solid #EDE9E3",
-        background: "#FAFAF8",
+        background: "#f0f6fa",
       }}>
         <div style={{ fontSize: "14px", fontWeight: 600, color: "#1C1B1A" }}>
           Asistente IA — Mobiliario No Clínico

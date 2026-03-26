@@ -51,7 +51,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      background: "#FAFAF8",
+      background: "#f0f6fa",
     }}>
       <form onSubmit={handleSubmit} style={{
         width: "100%", maxWidth: "760px",
