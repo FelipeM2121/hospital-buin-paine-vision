@@ -281,9 +281,9 @@ function detectTopics(msg: string): { topics: Topic[]; matches: { pisos: number[
   return { topics: [...new Set(topics)], matches };
 }
 
-// ── Build targeted context based on detected topics ──
+// ── Build FULL context — always injects ALL inventory data ──
 function buildContext(
-  topics: Topic[],
+  _topics: Topic[],
   matches: ReturnType<typeof detectTopics>["matches"],
   idx: DataIndex,
   summary: SummaryData,
@@ -291,176 +291,104 @@ function buildContext(
 ): string {
   const sections: string[] = [];
 
-  // Always include base stats
-  sections.push(`HOSPITAL BUIN PAINE - INVENTARIO MOBILIARIO NO CLÍNICO
-Total general: ${fmt(summary.totalQty)} unidades en ${fmt(summary.totalItems)} artículos distintos
-Pisos: ${summary.pisos} | Servicios: ${summary.uniqueServicios} | Proveedores: ${summary.proveedores} | Recintos: ${fmt(summary.uniqueRecintos)}
-Familias: ${sortDesc(idx.byFamilia).map(([k, v]) => `${k}: ${fmt(v)} uds`).join(" | ")}`);
+  // ═══ 1. RESUMEN GENERAL ═══
+  sections.push(`══════════════════════════════════════════
+HOSPITAL BUIN PAINE — INVENTARIO MOBILIARIO NO CLÍNICO (COMPLETO)
+══════════════════════════════════════════
+Total: ${fmt(summary.totalQty)} unidades | ${fmt(summary.totalItems)} registros | ${summary.uniqueNombres} tipos de mueble
+Pisos: ${summary.pisos} | Servicios: ${summary.uniqueServicios} | Recintos: ${fmt(summary.uniqueRecintos)} | Zonas: ${summary.uniqueZonas}
+Proveedores: ${summary.proveedores} | Familias de muebles: ${summary.familias}`);
 
-  for (const topic of topics) {
-    switch (topic) {
-      case "resumen":
-        sections.push(`RESUMEN COMPLETO:
-Recintos únicos: ${fmt(summary.uniqueRecintos)} | Tipos de mueble distintos: ${summary.uniqueNombres}
-Zonas: ${sortDesc(idx.byZona).map(([k, v]) => `${k}:${fmt(v)}`).join(", ")}
-
-FAMILIAS DE MUEBLES (IMPORTANTE - menciona TODAS en tu respuesta):
-${sortDesc(idx.byFamilia).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}
-
-TODOS LOS PROVEEDORES:
-${sortDesc(idx.byProveedor).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}
-
-DISTRIBUCIÓN COMPLETA POR PISO:
-${Object.entries(idx.byPiso).sort().map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}
-
-TODOS LOS PRODUCTOS (${Object.keys(idx.byNombre).length} tipos):
-${sortDesc(idx.byNombre).map(([k, v]) => `${k}: ${fmt(v)}`).join(", ")}
-
-TODOS LOS SERVICIOS (${Object.keys(idx.byServicio).length}):
-${sortDesc(idx.byServicio).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
-        break;
-
-      case "piso":
-        if (matches.pisos.length > 0) {
-          for (const p of matches.pisos) {
-            const key = `Piso ${p}`;
-            const total = idx.byPiso[key] || 0;
-            const prodsOnFloor: [string, number][] = [];
-            for (const [prod, pisos] of Object.entries(idx.prodPiso)) {
-              const qty = pisos[`P${p}`];
-              if (qty) prodsOnFloor.push([prod, qty]);
-            }
-            prodsOnFloor.sort(([, a], [, b]) => b - a);
-            const servsOnFloor = sortDesc(idx.pisoServ[p] || {});
-            sections.push(`PISO ${p}: ${fmt(total)} unidades total
-Productos en Piso ${p}:\n${prodsOnFloor.map(([k, v]) => `  ${k}: ${v} uds`).join("\n")}
-Servicios en Piso ${p}:\n${servsOnFloor.map(([k, v]) => `  ${k}: ${v} uds`).join("\n")}`);
-          }
-        } else {
-          sections.push(`DISTRIBUCIÓN POR PISO:
-${Object.entries(idx.byPiso).sort().map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
-        }
-        break;
-
-      case "servicio":
-        if (matches.servicios.length > 0) {
-          for (const svc of matches.servicios) {
-            const total = idx.byServicio[svc] || 0;
-            const prods = sortDesc(idx.servProd[svc] || {});
-            sections.push(`SERVICIO "${svc}": ${fmt(total)} unidades totales
-Desglose por producto:
-${prods.map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n")}`);
-          }
-        } else {
-          sections.push(`TODOS LOS SERVICIOS (${Object.keys(idx.byServicio).length} servicios):
-${sortDesc(idx.byServicio).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
-        }
-        break;
-
-      case "producto":
-        if (matches.productos.length > 0) {
-          for (const prod of matches.productos) {
-            // Find exact or partial match
-            const exactKey = Object.keys(idx.byNombre).find((k) => k.toLowerCase().includes(prod.toLowerCase())) || prod;
-            const total = idx.byNombre[exactKey] || 0;
-            const pisos = idx.prodPiso[exactKey] || {};
-            const servs = idx.prodServ[exactKey] || {};
-            const pisoStr = Object.entries(pisos).sort().map(([k, v]) => `${k}:${v}`).join(", ");
-            const servStr = sortDesc(servs).slice(0, 5).map(([k, v]) => `${k}:${v}`).join(", ");
-
-            // Find EETT
-            const eettMatch = eettFiles.find((e) =>
-              e.name.toLowerCase().includes(prod.toLowerCase().split(" ").slice(0, 2).join(" ")) ||
-              prod.toLowerCase().includes(e.name.toLowerCase().split(" ").slice(0, 2).join(" "))
-            );
-            let eettInfo = "";
-            if (eettMatch) {
-              const spec = EETT_KNOWLEDGE[eettMatch.code];
-              if (spec) {
-                eettInfo = `\nFicha EETT ${eettMatch.code}:\n  Descripción: ${spec.desc}\n  Material: ${spec.material}\n  Dimensiones: ${spec.dimensiones}\n  Color: ${spec.color}\n  PDF: [${eettMatch.name}](eett/${encodeURIComponent(eettMatch.file)})`;
-              }
-            }
-
-            sections.push(`PRODUCTO "${exactKey}": ${fmt(total)} unidades
-Por piso: ${pisoStr}
-En servicios: ${servStr}${eettInfo}`);
-          }
-        } else {
-          sections.push(`TODOS LOS PRODUCTOS (top 25):
-${sortDesc(idx.byNombre).slice(0, 25).map(([k, v]) => `${k}: ${fmt(v)}`).join("\n")}`);
-        }
-        break;
-
-      case "familia":
-        sections.push(`FAMILIAS CON TODOS SUS PRODUCTOS:
-${sortDesc(idx.byFamilia).map(([k, v]) => {
-  const prods = sortDesc(idx.famProd[k] || {}).map(([n, q]) => `  ${n}: ${q} uds`).join("\n");
-  return `${k}: ${fmt(v)} uds total\n${prods}`;
+  // ═══ 2. FAMILIAS CON TODOS SUS PRODUCTOS ═══
+  sections.push(`══ FAMILIAS DE MUEBLES (${sortDesc(idx.byFamilia).length} familias, ${fmt(summary.totalQty)} uds total) ══
+${sortDesc(idx.byFamilia).map(([fam, total]) => {
+  const pct = ((total / summary.totalQty) * 100).toFixed(1);
+  const prods = sortDesc(idx.famProd[fam] || {}).map(([n, q]) => `    ${n}: ${fmt(q)} uds`).join("\n");
+  return `  ${fam}: ${fmt(total)} uds (${pct}% del total)\n${prods}`;
 }).join("\n\n")}`);
-        break;
 
-      case "proveedor":
-        if (matches.proveedores.length > 0) {
-          for (const prov of matches.proveedores) {
-            const total = idx.byProveedor[prov] || 0;
-            const fams = idx.provFam[prov] || {};
-            const prods = sortDesc(idx.provProd[prov] || {});
-            sections.push(`PROVEEDOR "${prov}": ${fmt(total)} unidades total
-Por familia: ${Object.entries(fams).map(([k, v]) => `${k}:${v}`).join(", ")}
-Todos los productos de ${prov}:
-${prods.map(([k, v]) => `  ${k}: ${v} uds`).join("\n")}`);
-          }
-        } else {
-          sections.push(`PROVEEDORES:
-${sortDesc(idx.byProveedor).map(([k, v]) => {
-  const fams = Object.entries(idx.provFam[k] || {}).map(([f, q]) => `${f}:${q}`).join(", ");
-  const topProds = sortDesc(idx.provProd[k] || {}).slice(0, 10).map(([p, q]) => `${p}:${q}`).join(", ");
-  return `${k}: ${fmt(v)} uds (${fams})\n  Top productos: ${topProds}`;
+  // ═══ 3. TODOS LOS PRODUCTOS ORDENADOS ═══
+  sections.push(`══ TODOS LOS PRODUCTOS (${Object.keys(idx.byNombre).length} tipos) ══
+${sortDesc(idx.byNombre).map(([k, v]) => {
+  const pisoStr = Object.entries(idx.prodPiso[k] || {}).sort().map(([p, q]) => `${p}:${q}`).join(", ");
+  return `  ${k}: ${fmt(v)} uds | Pisos: ${pisoStr || "—"}`;
 }).join("\n")}`);
-        }
-        break;
 
-      case "eett":
-        if (matches.eettCodes.length > 0) {
-          for (const code of matches.eettCodes) {
-            const ef = eettFiles.find((e) => e.code.toUpperCase() === code);
-            const spec = EETT_KNOWLEDGE[code] || EETT_KNOWLEDGE[code.toLowerCase()];
-            if (ef && spec) {
-              sections.push(`FICHA EETT ${ef.code} - ${ef.name}:
-Descripción: ${spec.desc}
-Material: ${spec.material}
-Dimensiones: ${spec.dimensiones}
-Color: ${spec.color}
-PDF: [${ef.name}](eett/${encodeURIComponent(ef.file)})`);
-            }
-          }
-        } else if (matches.productos.length > 0) {
-          // EETT for mentioned products — already handled in "producto" topic
-        } else {
-          sections.push(`FICHAS TÉCNICAS EETT (${eettFiles.length} especificaciones):
+  // ═══ 4. TODOS LOS SERVICIOS CON SUS PRODUCTOS ═══
+  sections.push(`══ SERVICIOS (${Object.keys(idx.byServicio).length} servicios) ══
+${sortDesc(idx.byServicio).map(([svc, total]) => {
+  const prods = sortDesc(idx.servProd[svc] || {}).map(([n, q]) => `    ${n}: ${fmt(q)}`).join("\n");
+  return `  ${svc}: ${fmt(total)} uds\n${prods}`;
+}).join("\n\n")}`);
+
+  // ═══ 5. DISTRIBUCIÓN POR PISO CON PRODUCTOS ═══
+  sections.push(`══ DISTRIBUCIÓN POR PISO ══
+${Object.entries(idx.byPiso).sort().map(([piso, total]) => {
+  const num = parseInt(piso.replace("Piso ", ""));
+  const prods: [string, number][] = [];
+  for (const [prod, pisoMap] of Object.entries(idx.prodPiso)) {
+    const q = pisoMap[`P${num}`];
+    if (q) prods.push([prod, q]);
+  }
+  prods.sort(([, a], [, b]) => b - a);
+  const servs = sortDesc(idx.pisoServ[num] || {}).map(([s, q]) => `${s}:${fmt(q)}`).join(", ");
+  return `  ${piso}: ${fmt(total)} uds\n    Servicios: ${servs}\n    Productos:\n${prods.map(([n, q]) => `      ${n}: ${fmt(q)}`).join("\n")}`;
+}).join("\n\n")}`);
+
+  // ═══ 6. PROVEEDORES CON PRODUCTOS ═══
+  sections.push(`══ PROVEEDORES ══
+${sortDesc(idx.byProveedor).map(([prov, total]) => {
+  const pct = ((total / summary.totalQty) * 100).toFixed(1);
+  const fams = Object.entries(idx.provFam[prov] || {}).map(([f, q]) => `${f}:${fmt(q)}`).join(", ");
+  const prods = sortDesc(idx.provProd[prov] || {}).map(([n, q]) => `    ${n}: ${fmt(q)} uds`).join("\n");
+  return `  ${prov}: ${fmt(total)} uds (${pct}%)\n  Familias: ${fams}\n  Productos:\n${prods}`;
+}).join("\n\n")}`);
+
+  // ═══ 7. ZONAS ═══
+  sections.push(`══ ZONAS (${summary.uniqueZonas} zonas) ══
+${sortDesc(idx.byZona).map(([k, v]) => `  ${k}: ${fmt(v)} uds`).join("\n")}`);
+
+  // ═══ 8. CALENDARIO INSTALACIÓN ═══
+  sections.push(`══ CALENDARIO DE INSTALACIÓN ══
+Período: ${summary.fechaStats?.fechaMin} a ${summary.fechaStats?.fechaMax} (${summary.fechaStats?.totalMeses} meses, ${summary.fechaStats?.totalSemanas} semanas)
+Por mes:
+${summary.byMes?.map((m) => `  ${m.name}: ${fmt(m.qty)} uds`).join("\n")}
+Por semana:
+${summary.bySemana?.map((s) => `  Semana ${s.name}: ${fmt(s.qty)} uds`).join("\n")}
+Por día de instalación:
+${summary.byDia?.map((d) => `  ${d.name}: ${fmt(d.qty)} uds`).join("\n")}`);
+
+  // ═══ 9. FICHAS TÉCNICAS EETT (todas con PDF) ═══
+  sections.push(`══ FICHAS TÉCNICAS EETT (${eettFiles.length} especificaciones) ══
 ${eettFiles.map((e) => {
   const spec = EETT_KNOWLEDGE[e.code];
   const link = `eett/${encodeURIComponent(e.file)}`;
   return spec
-    ? `${e.code} ${e.name}: ${spec.desc}. ${spec.material}. ${spec.dimensiones}. PDF:[${e.name}](${link})`
-    : `${e.code} ${e.name}. PDF:[${e.name}](${link})`;
-}).join("\n")}`);
+    ? `  ${e.code} — ${e.name}\n    Descripción: ${spec.desc}\n    Material: ${spec.material}\n    Dimensiones: ${spec.dimensiones}\n    Color: ${spec.color}\n    PDF: [${e.name}](${link})`
+    : `  ${e.code} — ${e.name}\n    PDF: [${e.name}](${link})`;
+}).join("\n\n")}`);
+
+  // ═══ 10. DETALLE EXTRA para productos/servicios/pisos mencionados explícitamente ═══
+  if (matches.productos.length > 0) {
+    const extras: string[] = [];
+    for (const prod of matches.productos) {
+      const exactKey = Object.keys(idx.byNombre).find((k) => k.toLowerCase().includes(prod.toLowerCase())) || prod;
+      const total = idx.byNombre[exactKey] || 0;
+      const servStr = sortDesc(idx.prodServ[exactKey] || {}).map(([s, q]) => `    ${s}: ${fmt(q)}`).join("\n");
+      const eettMatch = eettFiles.find((e) =>
+        e.name.toLowerCase().includes(prod.toLowerCase().split(" ").slice(0, 2).join(" ")) ||
+        prod.toLowerCase().includes(e.name.toLowerCase().split(" ").slice(0, 2).join(" "))
+      );
+      let eettInfo = "";
+      if (eettMatch) {
+        const spec = EETT_KNOWLEDGE[eettMatch.code];
+        if (spec) {
+          eettInfo = `\n    Ficha EETT ${eettMatch.code}: ${spec.desc}\n    Material: ${spec.material} | Dim: ${spec.dimensiones}\n    PDF: [${eettMatch.name}](eett/${encodeURIComponent(eettMatch.file)})`;
         }
-        break;
-
-      case "fecha":
-        sections.push(`CALENDARIO INSTALACIÓN:
-Período: ${summary.fechaStats?.fechaMin} a ${summary.fechaStats?.fechaMax} (${summary.fechaStats?.totalMeses} meses)
-Por mes: ${summary.byMes?.map((m) => `${m.name}:${fmt(m.qty)}`).join(", ")}
-Por semana: ${summary.bySemana?.map((s) => `${s.name}:${fmt(s.qty)}`).join(", ")}
-Por día: ${summary.byDia?.map((d) => `${d.name}:${fmt(d.qty)}`).join(", ")}`);
-        break;
-
-      case "zona":
-        sections.push(`ZONAS (${summary.uniqueZonas}):
-${sortDesc(idx.byZona).map(([k, v]) => `${k}: ${fmt(v)} uds`).join("\n")}`);
-        break;
+      }
+      extras.push(`  CONSULTA SOBRE "${exactKey}": ${fmt(total)} unidades en total\n  Por servicio:\n${servStr}${eettInfo}`);
     }
+    if (extras.length > 0) sections.unshift(`══ DATOS ESPECÍFICOS CONSULTADOS ══\n${extras.join("\n\n")}`);
   }
 
   return sections.join("\n\n");
@@ -527,38 +455,28 @@ async function callClaudeStream(
 }
 
 // ── Base system instruction ──
-const BASE_SYSTEM = `Eres el asistente IA oficial del Hospital Buin Paine, especializado en el inventario de mobiliario no clínico del hospital (Sistema SGD).
+const BASE_SYSTEM = `Eres el asistente IA oficial del Hospital Buin Paine, especializado en el inventario de mobiliario no clínico del hospital (Sistema SGD). Tienes acceso COMPLETO a todo el inventario.
 
-CONTEXTO:
-El sistema SGD registra todo el mobiliario no clínico instalado. Los datos incluyen: productos, familias de muebles, proveedores, cantidades, pisos, servicios, zonas, recintos y fechas de instalación.
+REGLAS ABSOLUTAS:
+1. Responde SIEMPRE en español, de forma clara y estructurada
+2. Usa ÚNICAMENTE los datos del bloque "DATOS DEL INVENTARIO" — NUNCA inventes cifras
+3. Si preguntan por totales o resumen: muestra TODAS las familias (Silla, Mesa, Otro, Mobiliario), TODOS los pisos, TODOS los proveedores
+4. Para listas largas (4+ elementos), usa tabla markdown
+5. Para PDFs de EETT: usa EXACTAMENTE el link del formato [Nombre](eett/EETT%20...) — nunca lo simplifiques
+6. Cita cifras exactas siempre: "1.285 unidades", no "aproximadamente 1.300"
+7. Cuando alguien pida "detalle", "resumen" o "total": entrega el desglose completo con TODOS los datos disponibles, sin omitir ninguna categoría
 
-CÓMO RESPONDER:
-- Responde SIEMPRE en español, de forma clara y directa
-- Usa SOLO los números y datos que aparecen en el contexto "DATOS RELEVANTES"
-- NUNCA inventes ni estimes cifras — si el dato exacto no está, dilo
-- Para comparaciones de 4 o más elementos, usa tabla markdown con columnas alineadas
-- Para listas de 3 o menos, usa viñetas o texto corrido
-- Cita números exactos: "hay 342 sillas", no "hay aproximadamente 300"
-- Si el usuario pregunta "cuántos/cuántas X", responde con el número exacto del inventario
-- Si pregunta por un servicio que no aparece en los datos, responde que no hay registros para ese servicio
-- Para PDFs de EETT: copia EXACTAMENTE el link que aparece en los datos con formato PDF:[nombre](eett/EETT%20...) — NUNCA inventes ni simplifiques el nombre del archivo
-
-REGLA CRITICA SOBRE FAMILIAS DE MUEBLES:
-Cuando des cualquier resumen o detalle general del inventario, SIEMPRE debes mencionar TODAS las familias con sus totales exactos. Las familias son: Silla, Mesa, Otro, Mobiliario. NUNCA omitas la familia "Silla" — es la más grande del inventario. Si los datos muestran "FAMILIAS CON TODOS SUS PRODUCTOS", incluye TODAS en tu respuesta sin excepción.
-
-TIPOS DE PREGUNTAS QUE PUEDES RESPONDER:
-- Totales globales: "¿cuántos muebles hay en total?"
-- Por piso: "¿qué hay en el piso 3?"
-- Por servicio: "¿cuántos muebles tiene Urgencia?"
-- Por producto: "¿cuántas sillas ergonómicas hay?"
-- Por proveedor: "¿qué productos suministró MELMAN SPA?"
-- Por familia: "¿cuántas sillas hay en total?"
-- Comparaciones: "¿qué servicio tiene más muebles?"
-- Rankings: "top 5 servicios con más muebles"
-- Porcentajes: "¿qué porcentaje del inventario es de ALLMEDICA?"
-- Fichas técnicas EETT: "dimensiones de la silla ergonómica"
-- Cronograma: "¿cuándo se instalaron los muebles?"
-- Distribución: "¿cómo se distribuye el inventario por piso?"
+PUEDES RESPONDER SOBRE:
+- Totales globales y resúmenes completos del inventario
+- Familias de muebles: Silla (3.233 uds), Mesa (694 uds), Otro (426 uds), Mobiliario (103 uds)
+- Cualquier producto específico: cantidad, en qué pisos está, en qué servicios
+- Cualquier servicio: qué muebles tiene y cuántos
+- Cualquier piso (1 al 7): qué contiene
+- Los 3 proveedores: MELMAN SPA, ALLMEDICA, COMERCIAL HAGELIN
+- Fichas técnicas EETT: materiales, dimensiones, colores, PDF descargable
+- Fechas de instalación y cronograma
+- Zonas de ubicación
+- Comparaciones, rankings y porcentajes entre cualquier categoría
 `;
 
 // ── Public API ──
@@ -626,8 +544,8 @@ class ChatServiceClass {
         this.conversationHistory = this.conversationHistory.slice(-6);
       }
 
-      // System = base instructions + targeted context
-      const systemPrompt = `${BASE_SYSTEM}\nDATOS RELEVANTES:\n${context}`;
+      // System = base instructions + full inventory context
+      const systemPrompt = `${BASE_SYSTEM}\nDATOS DEL INVENTARIO (COMPLETOS):\n${context}`;
 
       const answer = await callClaudeStream(this.conversationHistory, systemPrompt, onToken || (() => {}));
       this.conversationHistory.push({ role: "assistant", content: answer });
