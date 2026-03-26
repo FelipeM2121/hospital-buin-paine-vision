@@ -81,22 +81,17 @@ function TreeNode({
         </span>
         {isRoot && color && <span className="cat-dot" style={{ background: color }} />}
         <span className="tree-icon">{isRoot ? "\uD83D\uDCC2" : hasChildren ? "\uD83D\uDCC1" : "\uD83D\uDCC1"}</span>
-        <span className="tree-name" title={node.name}>{node.name}</span>
-        {hasChildren && <span className="tree-count">{node.childCount}</span>}
         <a
           href={link}
           target="_blank"
           rel="noopener noreferrer"
-          className="tree-link"
+          className="tree-name-link"
+          title={`Abrir "${node.name}" en SharePoint`}
           onClick={(e) => e.stopPropagation()}
-          title="Abrir en SharePoint"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-            <polyline points="15 3 21 3 21 9" />
-            <line x1="10" y1="14" x2="21" y2="3" />
-          </svg>
+          {node.name}
         </a>
+        {hasChildren && <span className="tree-count">{node.childCount}</span>}
       </div>
       {isOpen && hasChildren && (
         <div className="tree-children">

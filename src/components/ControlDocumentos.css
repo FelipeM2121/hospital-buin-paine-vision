@@ -232,6 +232,27 @@
   white-space: nowrap;
 }
 
+.tree-name-link {
+  flex: 1;
+  font-size: 14px;
+  color: #0f1e2e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.tree-name-link:hover {
+  color: #00b4d8;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.root-row .tree-name-link {
+  font-weight: 600;
+  font-size: 15px;
+}
+
 .tree-count {
   font-size: 11px;
   color: #8aaec4;
