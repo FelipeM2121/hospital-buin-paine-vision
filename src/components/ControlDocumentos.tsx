@@ -12,6 +12,10 @@ interface FolderNode {
 
 const BASE_URL = controlDocData.base;
 const SUFFIX = controlDocData.suffix;
+const CATEGORIES = controlDocData.categories as string[];
+const TOTAL_FOLDERS = controlDocData.totalFolders;
+const MAX_LEVEL = controlDocData.maxLevel;
+const GENERATED_DATE = controlDocData.generatedDate;
 
 function buildTree(flat: [string, number, string][]): FolderNode[] {
   const root: FolderNode[] = [];
@@ -35,9 +39,10 @@ function buildTree(flat: [string, number, string][]): FolderNode[] {
 }
 
 const TREE = buildTree(controlDocData.folders as [string, number, string][]);
-const TOTAL_FOLDERS = controlDocData.folders.length;
 
 const CATEGORY_COLORS: Record<string, string> = {
+  EMMC: "#0ea5e9",
+  INSTRUMENTAL: "#f59e0b",
   MNC: "#8b5cf6",
 };
 
@@ -67,7 +72,8 @@ function TreeNode({
   const hasChildren = node.children.length > 0;
   const isRoot = node.level === 1;
   const color = isRoot ? CATEGORY_COLORS[node.name] || "#00b4d8" : undefined;
-  const link = `${BASE_URL}${node.path}${SUFFIX}`;
+  const encodedPath = node.path.split("/").map(encodeURIComponent).join("/");
+  const link = `${BASE_URL}/${encodedPath}${SUFFIX}`;
 
   return (
     <div className={`tree-item ${isRoot ? "tree-root" : ""}`}>
@@ -158,15 +164,18 @@ export function ControlDocumentos() {
           <div className="cd-kpi-value">{TOTAL_FOLDERS.toLocaleString("es-CL")}</div>
           <div className="cd-kpi-label">Total Carpetas</div>
         </div>
-        <div className="cd-kpi-card" style={{ borderTop: "4px solid #8b5cf6" }}>
-          <div className="cd-kpi-value" style={{ color: "#8b5cf6" }}>
-            {TREE[0]?.children?.length || 0}
-          </div>
-          <div className="cd-kpi-label">Subcarpetas Nivel 2</div>
-        </div>
-        <div className="cd-kpi-card" style={{ borderTop: "4px solid #00b4d8" }}>
-          <div className="cd-kpi-value" style={{ color: "#00b4d8" }}>6</div>
-          <div className="cd-kpi-label">Niveles de Profundidad</div>
+        {TREE.map((cat) => {
+          const color = CATEGORY_COLORS[cat.name] || "#00b4d8";
+          return (
+            <div key={cat.name} className="cd-kpi-card" style={{ borderTop: `4px solid ${color}` }}>
+              <div className="cd-kpi-value" style={{ color }}>{(cat.childCount + 1).toLocaleString("es-CL")}</div>
+              <div className="cd-kpi-label">{cat.name}</div>
+            </div>
+          );
+        })}
+        <div className="cd-kpi-card" style={{ borderTop: "4px solid #64748b" }}>
+          <div className="cd-kpi-value" style={{ color: "#64748b" }}>{MAX_LEVEL}</div>
+          <div className="cd-kpi-label">Niveles</div>
         </div>
       </div>
 
@@ -186,7 +195,7 @@ export function ControlDocumentos() {
           />
           {search && (
             <button className="cd-search-clear" onClick={() => setSearch("")}>
-              ×
+              x
             </button>
           )}
         </div>
@@ -208,7 +217,7 @@ export function ControlDocumentos() {
 
       {/* Breadcrumb */}
       <div className="cd-breadcrumb">
-        Documentos &gt; Operaciones &gt; CHI HBP &gt; 03 ADQ-REP &gt; 3.- 360 - SGD SC &gt; MNC
+        Documentos &gt; Operaciones &gt; CHI HBP &gt; 03 ADQ-REP &gt; 3.- 360 - SGD SC &gt; {CATEGORIES.join(" | ")}
       </div>
 
       {/* Tree */}
@@ -230,8 +239,8 @@ export function ControlDocumentos() {
 
       {/* Footer stats */}
       <div className="cd-footer">
-        <span>{TOTAL_FOLDERS.toLocaleString("es-CL")} carpetas | 6 niveles de profundidad | MNC</span>
-        <span>Generado: 19/03/2026</span>
+        <span>{TOTAL_FOLDERS.toLocaleString("es-CL")} carpetas | {MAX_LEVEL} niveles | {CATEGORIES.join(", ")}</span>
+        <span>Generado: {GENERATED_DATE}</span>
       </div>
     </div>
   );
