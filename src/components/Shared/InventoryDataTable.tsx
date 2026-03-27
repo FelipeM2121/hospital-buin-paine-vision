@@ -345,7 +345,7 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
                 <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Piso</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Recinto</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Proveedor</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Zona</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Servicio</th>
                 <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Inicio Inst.</th>
                 <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Término Inst.</th>
               </tr>
@@ -375,7 +375,7 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
                   <td style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text, textAlign: "center", fontWeight: 600 }}>{row.piso}</td>
                   <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.recinto}</td>
                   <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text }}>{row.proveedor}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.zona}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.servicio}</td>
                   <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.inicioInstalacion)}</td>
                   <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.terminoInstalacion)}</td>
                 </tr>
