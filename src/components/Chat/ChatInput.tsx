@@ -102,7 +102,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               background: "linear-gradient(135deg, #C9623F, #E8956D)",
               flexShrink: 0,
             }} />
-            LLaMA 3.3 70B
+            Qwen3 235B
           </span>
 
           {/* Send / Stop */}
