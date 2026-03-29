@@ -538,7 +538,7 @@ CIFRAS OFICIALES — INVENTARIO MNC HOSPITAL BUIN PAINE
 ══════════════════════════════════════════
 
 TOTAL GENERAL: 4.471 unidades | 1.978 registros | 80 tipos de producto
-Servicios: 40 | Pisos: 7 | Recintos: 815 | Proveedores: 4 | Familias: 4
+Servicios: 40 | Pisos: 8 (-1, 1, 2, 3, 4, 5, 6, 7) | Recintos: 815 | Proveedores: 4 | Familias: 4
 
 ── FAMILIAS DE MUEBLES (4 familias) ──
 | Familia    | Unidades | % Total | Descripción |
@@ -646,15 +646,16 @@ Servicios: 40 | Pisos: 7 | Recintos: 815 | Proveedores: 4 | Familias: 4
 | Cirugía menor | 2 | 2 |
 
 ── DISTRIBUCIÓN POR PISO ──
-| Piso | Recintos | Unidades |
-|------|----------|----------|
-| Piso 1 | 264 | 1.470 |
-| Piso 2 | 237 | 1.547 |
-| Piso 3 | 173 | 855 |
-| Piso 4 | 40 | 184 |
-| Piso 5 | 40 | 137 |
-| Piso 6 | 33 | 150 |
-| Piso 7 | 27 | 127 |
+| Piso | Unidades |
+|------|----------|
+| Piso -1 | 1 |
+| Piso 1 | 1.470 |
+| Piso 2 | 1.547 |
+| Piso 3 | 855 |
+| Piso 4 | 184 |
+| Piso 5 | 137 |
+| Piso 6 | 150 |
+| Piso 7 | 127 |
 
 ── PROVEEDORES ──
 | Proveedor | Unidades | % Total |
