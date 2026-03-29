@@ -646,16 +646,16 @@ Servicios: 40 | Pisos: 8 (-1, 1, 2, 3, 4, 5, 6, 7) | Recintos: 815 | Proveedores
 | Cirugía menor | 2 | 2 |
 
 ── DISTRIBUCIÓN POR PISO ──
-| Piso | Unidades |
-|------|----------|
-| Piso -1 | 1 |
-| Piso 1 | 1.470 |
-| Piso 2 | 1.547 |
-| Piso 3 | 855 |
-| Piso 4 | 184 |
-| Piso 5 | 137 |
-| Piso 6 | 150 |
-| Piso 7 | 127 |
+| Piso | Recintos | Unidades |
+|------|----------|----------|
+| Piso -1 | 1  | 1     |
+| Piso 1  | 17 | 1.470 |
+| Piso 2  | 16 | 1.547 |
+| Piso 3  | 10 | 855   |
+| Piso 4  | 4  | 184   |
+| Piso 5  | 3  | 137   |
+| Piso 6  | 4  | 150   |
+| Piso 7  | 3  | 127   |
 
 ── PROVEEDORES ──
 | Proveedor | Unidades | % Total |
