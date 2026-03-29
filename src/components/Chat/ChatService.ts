@@ -474,7 +474,7 @@ async function callClaudeStream(
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: 1024,
       stream: true,
       messages: [
         { role: "system", content: systemPrompt },
@@ -754,7 +754,7 @@ class ChatServiceClass {
       }
 
       // System = base instructions + inventory context (truncated to fit Groq TPM limits)
-      const MAX_CONTEXT_CHARS = 18000;
+      const MAX_CONTEXT_CHARS = 8000;
       const truncatedContext = context.length > MAX_CONTEXT_CHARS
         ? context.slice(0, MAX_CONTEXT_CHARS) + "\n\n[...contexto truncado por límite de tokens...]"
         : context;
