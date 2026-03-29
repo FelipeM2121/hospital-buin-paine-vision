@@ -15,12 +15,12 @@ export interface ChatError {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Chat Service — Claude AI con Smart Context Selection
+   Chat Service — Gemini AI con Smart Context Selection
    Solo inyecta datos RELEVANTES a la pregunta → rápido y preciso
    ═══════════════════════════════════════════════════════════════ */
 
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-const MODEL = "claude-sonnet-4-6";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const MODEL = "gemini-2.0-flash";
 
 const fmt = (n: number) => n.toLocaleString("es-CL");
 
@@ -460,33 +460,35 @@ ${summary.byServicio.slice().sort((a, b) => b.qty - a.qty).map(({ name: svc }) =
   return sections.join("\n\n");
 }
 
-// ── Claude API call with STREAMING ──
+// ── Gemini API call with STREAMING ──
 async function callClaudeStream(
   messages: { role: string; content: string }[],
   systemPrompt: string,
   onToken: (token: string) => void,
 ): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY || "",
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages,
-      stream: true,
-    }),
-    signal: AbortSignal.timeout(180000),
-  });
+  // Convert messages: Anthropic uses "assistant", Gemini uses "model"
+  const geminiContents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY || ""}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: geminiContents,
+        generationConfig: { maxOutputTokens: 2048 },
+      }),
+      signal: AbortSignal.timeout(180000),
+    }
+  );
 
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
-    throw new Error(`Claude error ${res.status}: ${(errBody as { error?: { message?: string } }).error?.message || res.statusText}`);
+    throw new Error(`Gemini error ${res.status}: ${(errBody as { error?: { message?: string } }).error?.message || res.statusText}`);
   }
 
   const reader = res.body?.getReader();
@@ -502,12 +504,12 @@ async function callClaudeStream(
     const chunk = decoder.decode(value, { stream: true });
     const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
     for (const line of lines) {
-      const data = line.slice(6);
-      if (data === "[DONE]") continue;
+      const data = line.slice(6).trim();
+      if (!data) continue;
       try {
         const json = JSON.parse(data);
-        if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-          const text: string = json.delta.text;
+        const text: string | undefined = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
           fullText += text;
           onToken(text);
         }
@@ -706,7 +708,7 @@ class ChatServiceClass {
 
   async checkHealth(): Promise<boolean> {
     if (this.ollamaAvailable !== null) return this.ollamaAvailable;
-    this.ollamaAvailable = !!ANTHROPIC_API_KEY;
+    this.ollamaAvailable = !!GEMINI_API_KEY;
     return this.ollamaAvailable;
   }
 
@@ -733,9 +735,9 @@ class ChatServiceClass {
         response: null,
         error: {
           error: true,
-          message: "Claude AI no está configurado",
-          code: "CLAUDE_UNAVAILABLE",
-          suggestion: "Configura VITE_ANTHROPIC_API_KEY en el archivo .env del proyecto.",
+          message: "Gemini AI no está configurado",
+          code: "GEMINI_UNAVAILABLE",
+          suggestion: "Configura VITE_GEMINI_API_KEY en el archivo .env del proyecto.",
         },
       };
     }
@@ -763,7 +765,7 @@ class ChatServiceClass {
         response: {
           id: Math.random().toString(36).substr(2, 9),
           response: answer,
-          sessionId: "claude-direct",
+          sessionId: "gemini-direct",
           tokensUsed: 0,
           model: MODEL,
           timestamp: new Date().toISOString(),
@@ -777,8 +779,8 @@ class ChatServiceClass {
         response: null,
         error: {
           error: true,
-          message: isTimeout ? "Claude tardó demasiado en responder" : "Error al comunicarse con Claude",
-          code: isTimeout ? "TIMEOUT" : "CLAUDE_ERROR",
+          message: isTimeout ? "Gemini tardó demasiado en responder" : "Error al comunicarse con Gemini",
+          code: isTimeout ? "TIMEOUT" : "GEMINI_ERROR",
           suggestion: "Si el problema persiste, contacta al administrador del sistema.",
         },
       };
