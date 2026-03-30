@@ -1,0 +1,263 @@
+.cronograma {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.cronograma-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #64748b;
+  font-size: 15px;
+}
+
+/* ── KPIs ── */
+.cronograma-kpis {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.kpi-card {
+  flex: 1;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.kpi-pendiente .kpi-value  { color: #f59e0b; }
+.kpi-progreso .kpi-value   { color: #3b82f6; }
+.kpi-completado .kpi-value { color: #22c55e; }
+
+/* ── Filtros ── */
+.cronograma-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 32px 8px 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0,120,212,0.1);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.filter-select {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  min-width: 130px;
+}
+
+.filter-select:focus {
+  border-color: var(--color-primary);
+}
+
+.clear-filters-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: var(--color-red);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* ── Info resultados ── */
+.cronograma-info {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* ── Tabla ── */
+.cronograma-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  flex: 1;
+}
+
+.cronograma-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cronograma-table thead tr {
+  background: #f8fafc;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.cronograma-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cronograma-table th:hover {
+  background: #f1f5f9;
+}
+
+.cronograma-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.cronograma-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.cronograma-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.col-id       { font-family: monospace; font-size: 12px; color: #64748b; white-space: nowrap; }
+.col-nombre   { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-recinto  { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-proveedor { white-space: nowrap; font-size: 12px; }
+.col-num      { text-align: center; }
+.col-fecha    { white-space: nowrap; font-size: 12px; }
+
+.no-results {
+  text-align: center;
+  color: #94a3b8;
+  padding: 40px !important;
+}
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-familia {
+  background: #f1f5f9;
+  color: #475569;
+}
+.badge-mesa       { background: #eff6ff; color: #2563eb; }
+.badge-silla      { background: #f0fdf4; color: #16a34a; }
+.badge-mobiliario { background: #fdf4ff; color: #9333ea; }
+.badge-otro       { background: #fff7ed; color: #c2410c; }
+
+.badge-estado { }
+.badge-pendiente   { background: #fffbeb; color: #b45309; }
+.badge-en_progreso { background: #eff6ff; color: #1d4ed8; }
+.badge-completado  { background: #f0fdf4; color: #15803d; }
+
+/* ── Sort icons ── */
+.sort-icon {
+  display: inline-block;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+.sort-none   { color: #cbd5e1; font-size: 10px; }
+.sort-active { color: var(--color-primary); }
+
+/* ── Paginación ── */
+.cronograma-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  color: #475569;
+}
+
+.cronograma-pagination button {
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.cronograma-pagination button:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: var(--color-primary);
+}
+
+.cronograma-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

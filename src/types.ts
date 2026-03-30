@@ -59,3 +59,21 @@ export interface EETTFile {
   name: string;
   file: string;
 }
+
+export interface CatalogoPage {
+  number: number;
+  title: string;
+  pdfUrl: string;
+  content: string;
+  section?: string;
+}
+
+export interface CatalogItem {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  pagina: number;
+  categoria?: string;
+  precio?: number;
+  especificaciones?: Record<string, string>;
+}

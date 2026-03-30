@@ -1,0 +1,12 @@
+{
+  "fileName": "catalogo-melman.pdf",
+  "pdfUrl": "/catalogo-melman.pdf",
+  "fileSize": 17035947,
+  "createdAt": "2026-03-30T18:07:38.378Z",
+  "note": "Page rendering happens in frontend with pdfjs-dist. Use CatalogoPageViewer component to display pages.",
+  "integration": {
+    "component": "CatalogoPageViewer.tsx",
+    "dataSource": "src/data/catalogo.ts",
+    "usage": "Import catalogo from src/data/catalogo and pass pageNumber to CatalogoPageViewer"
+  }
+}

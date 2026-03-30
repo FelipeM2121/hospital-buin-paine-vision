@@ -30,7 +30,7 @@ export interface SummaryData {
  * Prepare dashboard data for chat context injection
  * Converts raw items and summary into structured text for LLM context
  */
-export function buildDataContext(rawItems: RawItem[], summary: SummaryData): string {
+export function buildDataContext(rawItems: RawItem[], summary: SummaryData, catalogInfo?: { totalPages: number }): string {
   // Group by family
   const familyMap: Record<string, number> = {};
   const supplierMap: Record<string, number> = {};
@@ -66,6 +66,20 @@ export function buildDataContext(rawItems: RawItem[], summary: SummaryData): str
     .map(([service, count]) => `- ${service}: ${count} unidades`)
     .join("\n");
 
+  let catalogContext = '';
+  if (catalogInfo) {
+    catalogContext = `
+
+=== CATÁLOGO MELMAN DISPONIBLE ===
+- Archivo: Catálogo Melman para Licitación Hospital Buin Paine
+- Total de Páginas: 74
+- Ubicación: /catalogo/pages/page-{N}.pdf (páginas 3-74) o /catalogo-melman.pdf (referencia)
+- Nota: Si el usuario pregunta sobre productos del catálogo, puedes referir a páginas específicas
+  Formato: "Puedes ver esto en la página X del catálogo"
+- Los usuarios pueden solicitar que muestres una página específica del catálogo
+=== FIN CATÁLOGO ===`;
+  }
+
   return `=== CONTEXTO DE INVENTARIO DEL HOSPITAL ===
 
 Estadísticas Generales:
@@ -89,5 +103,5 @@ ${floorStats}
 Servicios Principales (Top 10):
 ${serviceStats}
 
-=== FIN CONTEXTO ===`;
+=== FIN CONTEXTO ===${catalogContext}`;
 }
