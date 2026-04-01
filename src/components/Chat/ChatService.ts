@@ -614,36 +614,66 @@ Servicios: 40 | Pisos: 8 (-1, 1, 2, 3, 4, 5, 6, 7) | Recintos: 815 | Proveedores
 | Cama Apilable | 28 |
 | Taburete con Ruedas sin Respaldo | 24 |
 | Banca Madera_C | 22 |
-| Silla Lactante | 21 |
-| Mesa Reuniones Tipo II | 20 |
-| Sillón Bergere Reforzado | 18 |
-| Perchero de Pie | 17 |
-| Locker Metálico | 16 |
-| Mesa Párvulo Tipo I | 15 |
-| Silla Apoyo Hora Ingesta | 14 |
-| Banca Espera Metálica | 13 |
+| Perchero | 20 |
+| Velador | 20 |
+| Silla Adulto | 18 |
+| Silla Lactante | 18 |
+| Mesa Reuniones Tipo II | 17 |
+| Mueble Tipo Biblioteca M45_B | 16 |
+| Cuna Alta | 14 |
+| Cuna Baja | 14 |
+| Silla Nido | 13 |
 | Mesa Párvulo Tipo II | 12 |
-| Atril Graduable | 11 |
-| Cuna Alta | 10 |
-| Mesa Reuniones Tipo III | 9 |
-| Silla Bacínica | 9 |
-| Cuna Baja | 8 |
-| Silla Párvulo Inclusión | 7 |
-| Mesa Párvulo Inclusión | 7 |
-| Contenedor de Almacenamiento | 6 |
-| Mueble Arrimo Bajo | 6 |
-| Librero Estantería | 5 |
-| Cama Apilable Sala Cuna | 5 |
-| Mueble Tipo Biblioteca Grande | 4 |
-| Mesa Casino Rectangular | 4 |
-| Silla Tipo Universitaria Reforzada | 3 |
-| Escritorio Esquinero | 3 |
-| Mesa Lateral Auxiliar | 3 |
+| Mesa Reuniones Tipo III | 12 |
+| Cama 1 1/2 Plaza | 11 |
+| Silla Apilable de Base Ancha | 10 |
+| Carro de Transporte | 9 |
+| Mesa Párvulo Tipo I | 8 |
+| Mesa Reuniones Plegable | 8 |
+| Atril graduable | 8 |
+| Caja Fuerte Tipo I | 8 |
+| Mueble Locker | 8 |
+| Sillón Tipo Poltrona | 8 |
+| Banca Madera_D | 6 |
+| Silla Alta Cafetería | 6 |
+| Escalera Tijera | 5 |
+| Silla de Apoyo Hora de Ingesta | 5 |
+| Colchoneta Reposo B | 4 |
+| Librero | 4 |
+| Escritorio simple 130x70 cm | 4 |
+| Pizarra Acrílica | 4 |
+| Banca | 4 |
+| Silla Bacinica | 4 |
+| Contenedor | 4 |
+| Banca Ecuménica | 4 |
+| Mesa Trabajo Individual | 3 |
+| Pallet | 3 |
+| Carro Bandejero | 3 |
+| Tarima | 3 |
+| Mesa Párvulo Inclusión | 2 |
+| Carro de Transporte cajas plásticas | 2 |
+| Carro metálico | 2 |
+| Juego Taca-Taca | 2 |
+| Juego Tenis de Mesa | 2 |
+| Soporte de rollo doble | 2 |
+| Mesa Plegable | 1 |
+| Caja Fuerte Tipo II | 1 |
+| Cama 1 Plaza | 1 |
+| Carro de Carga | 1 |
+| Pódium | 1 |
+| Adaptador de llaves | 1 |
+| Carro de transporte alto | 1 |
+| Carro de transporte pallet | 1 |
+| Carro dual dos ruedas | 1 |
+| Carro plataforma de carga | 1 |
+| Estación de órtesis metálica | 1 |
+| Mueble Arrimo | 1 |
+| Podio Ecuménico | 1 |
 
 ── SERVICIOS MÉDICOS (40 servicios) ──
 | Servicio | Unidades | Recintos |
 |----------|----------|----------|
-| Administración y apoyo general | 819 | 114 |
+| Administración y apoyo general | 821 | 115 |
 | Consultas medicas generales | 376 | 78 |
 | Urgencia | 313 | 79 |
 | Comedor para funcionarios y público | 307 | 8 |
@@ -684,16 +714,16 @@ Servicios: 40 | Pisos: 8 (-1, 1, 2, 3, 4, 5, 6, 7) | Recintos: 815 | Proveedores
 | Cirugía menor | 2 | 2 |
 
 ── DISTRIBUCIÓN POR PISO ──
-| Piso | Recintos | Unidades |
-|------|----------|----------|
-| Piso -1 | 1  | 1     |
-| Piso 1  | 17 | 1.470 |
-| Piso 2  | 16 | 1.547 |
-| Piso 3  | 10 | 855   |
-| Piso 4  | 4  | 184   |
-| Piso 5  | 3  | 137   |
-| Piso 6  | 4  | 150   |
-| Piso 7  | 3  | 127   |
+| Piso    | Ítems | Unidades | Recintos |
+|---------|-------|----------|---------|
+| Piso -1 | 1     | 1        | 1       |
+| Piso 1  | 687   | 1.470    | 264     |
+| Piso 2  | 612   | 1.547    | 237     |
+| Piso 3  | 432   | 855      | 173     |
+| Piso 4  | 78    | 184      | 40      |
+| Piso 5  | 66    | 137      | 40      |
+| Piso 6  | 60    | 150      | 33      |
+| Piso 7  | 42    | 127      | 27      |
 
 ── PROVEEDORES ──
 | Proveedor | Unidades | % Total |
@@ -705,12 +735,12 @@ Servicios: 40 | Pisos: 8 (-1, 1, 2, 3, 4, 5, 6, 7) | Recintos: 815 | Proveedores
 
 ── CRONOGRAMA DE INSTALACIÓN ──
 Período: Mayo 2026 – Agosto 2026
-| Mes | Unidades |
-|-----|----------|
-| Mayo 2026 | 66 |
-| Junio 2026 | 44 |
-| Julio 2026 | 4.084 |
-| Agosto 2026 | 277 |
+| Mes          | Unidades |
+|--------------|----------|
+| Mayo 2026    | 66       |
+| Junio 2026   | 44       |
+| Julio 2026   | 4.084    |
+| Agosto 2026  | 277      |
 
 ══════════════════════════════════════════
 FIN CIFRAS OFICIALES
