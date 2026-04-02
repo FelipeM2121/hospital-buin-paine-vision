@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { COLORS, PIE_FAMILIA_COLORS } from "../../constants/theme";
 import { SectionTitle } from "./SectionTitle";
 import { Icons } from "../../constants/icons";
@@ -28,6 +30,23 @@ interface InventoryItem {
 interface InventoryDataTableProps {
   data: InventoryItem[];
 }
+
+// Definición de columnas
+const ALL_COLUMNS = [
+  { key: "nombre",            label: "Nombre",        defaultVisible: true },
+  { key: "familia",           label: "Familia",       defaultVisible: true },
+  { key: "tipoEquipo",        label: "Tipo Equipo",   defaultVisible: true },
+  { key: "cantidad",          label: "Cant.",         defaultVisible: true },
+  { key: "piso",              label: "Piso",          defaultVisible: true },
+  { key: "recinto",           label: "Recinto",       defaultVisible: true },
+  { key: "proveedor",         label: "Proveedor",     defaultVisible: true },
+  { key: "servicio",          label: "Servicio",      defaultVisible: true },
+  { key: "zona",              label: "Zona",          defaultVisible: false },
+  { key: "inicioInstalacion", label: "Inicio Inst.",  defaultVisible: true },
+  { key: "terminoInstalacion",label: "Término Inst.", defaultVisible: true },
+] as const;
+
+type ColKey = typeof ALL_COLUMNS[number]["key"];
 
 export function InventoryDataTable({ data: initialData }: InventoryDataTableProps) {
   const [data, setData] = useState(initialData);
@@ -66,6 +85,25 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  // Visibilidad de columnas
+  const defaultVisible = Object.fromEntries(ALL_COLUMNS.map(c => [c.key, c.defaultVisible])) as Record<ColKey, boolean>;
+  const [visibleCols, setVisibleCols] = useState<Record<ColKey, boolean>>(defaultVisible);
+  const [showColMenu, setShowColMenu] = useState(false);
+  const colMenuRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (colMenuRef.current && !colMenuRef.current.contains(e.target as Node)) {
+        setShowColMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const activeCols = ALL_COLUMNS.filter(c => visibleCols[c.key]);
+
   // Obtener valores únicos para filtros
   const uniqueZonas = useMemo(() => [...new Set(data.map(d => d.zona))].filter(Boolean).sort(), [data]);
   const uniqueFamilias = useMemo(() => [...new Set(data.map(d => d.familia))].filter(Boolean).sort(), [data]);
@@ -98,8 +136,36 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
     currentPage * itemsPerPage
   );
 
-  // Reset página cuando cambian filtros
   useEffect(() => { setCurrentPage(1); }, [filters]);
+
+  // Exportar PDF
+  function exportPDF() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setFontSize(13);
+    doc.text("Inventario Hospital Buin Paine", 14, 14);
+    doc.setFontSize(9);
+    doc.text(`Exportado el ${new Date().toLocaleDateString("es-CL")} — ${filteredData.length} registros`, 14, 20);
+
+    const head = [activeCols.map(c => c.label)];
+    const body = filteredData.map(row =>
+      activeCols.map(c => {
+        if (c.key === "inicioInstalacion") return fmtDate(row.inicioInstalacion);
+        if (c.key === "terminoInstalacion") return fmtDate(row.terminoInstalacion);
+        return String((row as any)[c.key] ?? "");
+      })
+    );
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 25,
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 245, 255] },
+    });
+
+    doc.save("inventario-hospital-buin-paine.pdf");
+  }
 
   const FilterSelect = ({ label, value, onChange, options, placeholder }: {
     label: string;
@@ -144,6 +210,22 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
     </div>
   );
 
+  const btnBase: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "8px 14px",
+    borderRadius: 8,
+    border: `1px solid ${COLORS.border}`,
+    background: COLORS.white,
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    whiteSpace: "nowrap",
+  };
+
   return (
     <>
       <SectionTitle icon={Icons.search}>Datos Completos del Inventario</SectionTitle>
@@ -156,16 +238,17 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
         boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         marginBottom: 24,
       }}>
-        {/* Barra de búsqueda */}
-        <div style={{ marginBottom: 20 }}>
+
+        {/* Barra de búsqueda + acciones */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20, alignItems: "center" }}>
           <input
             type="text"
             placeholder="🔍 Buscar por nombre, recinto o código..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             style={{
-              width: "100%",
-              padding: "12px 16px",
+              flex: 1,
+              padding: "10px 16px",
               borderRadius: 12,
               border: `1.5px solid ${COLORS.borderLight}`,
               fontSize: 14,
@@ -177,15 +260,86 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
             onFocus={(e) => e.currentTarget.style.borderColor = COLORS.primary}
             onBlur={(e) => e.currentTarget.style.borderColor = COLORS.borderLight}
           />
+
+          {/* Botón columnas */}
+          <div style={{ position: "relative" }} ref={colMenuRef}>
+            <button
+              onClick={() => setShowColMenu(v => !v)}
+              style={{
+                ...btnBase,
+                background: showColMenu ? COLORS.primary : COLORS.white,
+                color: showColMenu ? COLORS.white : COLORS.text,
+                borderColor: showColMenu ? COLORS.primary : COLORS.border,
+              }}>
+              ⚙ Columnas
+            </button>
+
+            {showColMenu && (
+              <div style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                background: COLORS.white,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 12,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                zIndex: 100,
+                minWidth: 200,
+                padding: "8px 0",
+              }}>
+                <div style={{ padding: "8px 16px 6px", fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5, borderBottom: `1px solid ${COLORS.borderLight}`, marginBottom: 4 }}>
+                  Mostrar columnas
+                </div>
+                {ALL_COLUMNS.map(col => (
+                  <label key={col.key} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "7px 16px",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    color: COLORS.text,
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = COLORS.bg}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                    <input
+                      type="checkbox"
+                      checked={visibleCols[col.key]}
+                      onChange={(e) => setVisibleCols(prev => ({ ...prev, [col.key]: e.target.checked }))}
+                      style={{ accentColor: COLORS.primary, width: 15, height: 15, cursor: "pointer" }}
+                    />
+                    {col.label}
+                  </label>
+                ))}
+                <div style={{ borderTop: `1px solid ${COLORS.borderLight}`, margin: "4px 0", padding: "6px 16px 2px", display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setVisibleCols(Object.fromEntries(ALL_COLUMNS.map(c => [c.key, true])) as Record<ColKey, boolean>)}
+                    style={{ flex: 1, fontSize: 11, padding: "5px 0", borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: "pointer", color: COLORS.text, fontWeight: 600 }}>
+                    Todas
+                  </button>
+                  <button
+                    onClick={() => setVisibleCols(Object.fromEntries(ALL_COLUMNS.map(c => [c.key, c.defaultVisible])) as Record<ColKey, boolean>)}
+                    style={{ flex: 1, fontSize: 11, padding: "5px 0", borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: "pointer", color: COLORS.text, fontWeight: 600 }}>
+                    Restablecer
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Botón PDF */}
+          <button
+            onClick={exportPDF}
+            style={{ ...btnBase, background: "#dc2626", color: COLORS.white, borderColor: "#dc2626" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#b91c1c"; e.currentTarget.style.borderColor = "#b91c1c"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#dc2626"; e.currentTarget.style.borderColor = "#dc2626"; }}>
+            ⬇ PDF
+          </button>
         </div>
 
         {/* Filtros */}
-        <div style={{
-          display: "flex",
-          gap: 12,
-          marginBottom: 20,
-          flexWrap: "wrap",
-        }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <FilterSelect
             label="Familia"
             value={filters.familia}
@@ -222,117 +376,55 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
             placeholder="Todos los servicios"
           />
 
-          {/* Filtro fecha desde */}
+          {/* Fecha desde */}
           <div style={{ flex: 1, minWidth: 150 }}>
-            <label style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 600,
-              color: COLORS.textMuted,
-              marginBottom: 6,
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-            }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
               Fecha Desde
             </label>
             <input
               type="date"
               value={filters.fechaDesde}
               onChange={(e) => setFilters({ ...filters, fechaDesde: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: `1px solid ${COLORS.border}`,
-                background: COLORS.white,
-                fontSize: 13,
-                color: COLORS.text,
-                cursor: "pointer",
-                transition: "border-color 0.2s ease",
-              }}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, background: COLORS.white, fontSize: 13, color: COLORS.text, cursor: "pointer" }}
               onFocus={(e) => e.currentTarget.style.borderColor = COLORS.primary}
               onBlur={(e) => e.currentTarget.style.borderColor = COLORS.border}
             />
           </div>
 
-          {/* Filtro fecha hasta */}
+          {/* Fecha hasta */}
           <div style={{ flex: 1, minWidth: 150 }}>
-            <label style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 600,
-              color: COLORS.textMuted,
-              marginBottom: 6,
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-            }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
               Fecha Hasta
             </label>
             <input
               type="date"
               value={filters.fechaHasta}
               onChange={(e) => setFilters({ ...filters, fechaHasta: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: `1px solid ${COLORS.border}`,
-                background: COLORS.white,
-                fontSize: 13,
-                color: COLORS.text,
-                cursor: "pointer",
-                transition: "border-color 0.2s ease",
-              }}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, background: COLORS.white, fontSize: 13, color: COLORS.text, cursor: "pointer" }}
               onFocus={(e) => e.currentTarget.style.borderColor = COLORS.primary}
               onBlur={(e) => e.currentTarget.style.borderColor = COLORS.border}
             />
           </div>
 
-          {/* Botón limpiar filtros */}
+          {/* Limpiar filtros */}
           {Object.values(filters).some(v => v) && (
             <div style={{ flex: 1, minWidth: 150, display: "flex", alignItems: "flex-end" }}>
               <button
                 onClick={() => setFilters({ zona: "", familia: "", proveedor: "", piso: "", servicio: "", search: "", fechaDesde: "", fechaHasta: "" })}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
-                  background: COLORS.white,
-                  color: COLORS.textMuted,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                  width: "100%",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = COLORS.red;
-                  e.currentTarget.style.color = COLORS.white;
-                  e.currentTarget.style.borderColor = COLORS.red;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = COLORS.white;
-                  e.currentTarget.style.color = COLORS.textMuted;
-                  e.currentTarget.style.borderColor = COLORS.border;
-                }}>
+                style={{ ...btnBase, width: "100%", justifyContent: "center", color: COLORS.textMuted }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = COLORS.red; e.currentTarget.style.color = COLORS.white; e.currentTarget.style.borderColor = COLORS.red; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = COLORS.white; e.currentTarget.style.color = COLORS.textMuted; e.currentTarget.style.borderColor = COLORS.border; }}>
                 Limpiar filtros
               </button>
             </div>
           )}
         </div>
 
-        {/* Contador de resultados */}
-        <div style={{
-          marginBottom: 16,
-          fontSize: 13,
-          color: COLORS.textMuted,
-          fontWeight: 500,
-        }}>
+        {/* Contador */}
+        <div style={{ marginBottom: 16, fontSize: 13, color: COLORS.textMuted, fontWeight: 500 }}>
           Mostrando <span style={{ color: COLORS.primary, fontWeight: 700 }}>{filteredData.length}</span> de {data.length} registros
           {filteredData.length !== data.length && (
-            <span style={{ marginLeft: 8 }}>
-              ({((filteredData.length / data.length) * 100).toFixed(1)}% del total)
-            </span>
+            <span style={{ marginLeft: 8 }}>({((filteredData.length / data.length) * 100).toFixed(1)}% del total)</span>
           )}
         </div>
 
@@ -341,51 +433,79 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: COLORS.bg, borderBottom: `2px solid ${COLORS.border}` }}>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Nombre</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Familia</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Tipo Equipo</th>
-                <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Cant.</th>
-                <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Piso</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Recinto</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Proveedor</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Servicio</th>
-                <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Inicio Inst.</th>
-                <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>Término Inst.</th>
+                {activeCols.map(col => (
+                  <th key={col.key} style={{
+                    padding: "12px 16px",
+                    textAlign: col.key === "cantidad" || col.key === "piso" || col.key === "inicioInstalacion" || col.key === "terminoInstalacion" ? "center" : "left",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: COLORS.textMuted,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                    whiteSpace: "nowrap",
+                  }}>
+                    {col.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {paginatedData.length > 0 ? paginatedData.map((row, i) => (
-                <tr key={i} style={{
-                  borderBottom: `1px solid ${COLORS.borderLight}`,
-                  transition: "background 0.15s ease",
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = COLORS.bg}
-                onMouseLeave={(e) => e.currentTarget.style.background = COLORS.white}>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text, fontWeight: 600 }}>{row.nombre}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text }}>
-                    <span style={{
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      background: PIE_FAMILIA_COLORS[row.familia as keyof typeof PIE_FAMILIA_COLORS] ? `${PIE_FAMILIA_COLORS[row.familia as keyof typeof PIE_FAMILIA_COLORS]}15` : COLORS.borderLight,
-                      color: PIE_FAMILIA_COLORS[row.familia as keyof typeof PIE_FAMILIA_COLORS] || COLORS.textMuted,
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}>
-                      {row.familia}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted }}>{row.tipoEquipo}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 14, color: COLORS.text, textAlign: "center", fontWeight: 700 }}>{row.cantidad}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text, textAlign: "center", fontWeight: 600 }}>{row.piso}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.recinto}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text }}>{row.proveedor}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.servicio}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.inicioInstalacion)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.terminoInstalacion)}</td>
+                <tr key={i}
+                  style={{ borderBottom: `1px solid ${COLORS.borderLight}`, transition: "background 0.15s ease" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = COLORS.bg}
+                  onMouseLeave={(e) => e.currentTarget.style.background = COLORS.white}>
+                  {activeCols.map(col => {
+                    if (col.key === "nombre") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text, fontWeight: 600 }}>{row.nombre}</td>
+                    );
+                    if (col.key === "familia") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text }}>
+                        <span style={{
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          background: PIE_FAMILIA_COLORS[row.familia as keyof typeof PIE_FAMILIA_COLORS] ? `${PIE_FAMILIA_COLORS[row.familia as keyof typeof PIE_FAMILIA_COLORS]}15` : COLORS.borderLight,
+                          color: PIE_FAMILIA_COLORS[row.familia as keyof typeof PIE_FAMILIA_COLORS] || COLORS.textMuted,
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}>
+                          {row.familia}
+                        </span>
+                      </td>
+                    );
+                    if (col.key === "tipoEquipo") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted }}>{row.tipoEquipo}</td>
+                    );
+                    if (col.key === "cantidad") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 14, color: COLORS.text, textAlign: "center", fontWeight: 700 }}>{row.cantidad}</td>
+                    );
+                    if (col.key === "piso") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text, textAlign: "center", fontWeight: 600 }}>{row.piso}</td>
+                    );
+                    if (col.key === "recinto") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.recinto}</td>
+                    );
+                    if (col.key === "proveedor") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text }}>{row.proveedor}</td>
+                    );
+                    if (col.key === "servicio") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.servicio}</td>
+                    );
+                    if (col.key === "zona") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.zona}</td>
+                    );
+                    if (col.key === "inicioInstalacion") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.inicioInstalacion)}</td>
+                    );
+                    if (col.key === "terminoInstalacion") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.terminoInstalacion)}</td>
+                    );
+                    return null;
+                  })}
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={10} style={{ padding: "40px", textAlign: "center", color: COLORS.textMuted, fontSize: 14 }}>
+                  <td colSpan={activeCols.length} style={{ padding: "40px", textAlign: "center", color: COLORS.textMuted, fontSize: 14 }}>
                     No se encontraron resultados con los filtros aplicados
                   </td>
                 </tr>
@@ -412,60 +532,26 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
+                  ...btnBase,
                   background: currentPage === 1 ? COLORS.borderLight : COLORS.white,
                   color: currentPage === 1 ? COLORS.textMuted : COLORS.text,
-                  fontSize: 13,
-                  fontWeight: 600,
                   cursor: currentPage === 1 ? "not-allowed" : "pointer",
-                  transition: "all 0.2s ease",
                 }}
-                onMouseEnter={(e) => {
-                  if (currentPage !== 1) {
-                    e.currentTarget.style.background = COLORS.primary;
-                    e.currentTarget.style.color = COLORS.white;
-                    e.currentTarget.style.borderColor = COLORS.primary;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (currentPage !== 1) {
-                    e.currentTarget.style.background = COLORS.white;
-                    e.currentTarget.style.color = COLORS.text;
-                    e.currentTarget.style.borderColor = COLORS.border;
-                  }
-                }}>
+                onMouseEnter={(e) => { if (currentPage !== 1) { e.currentTarget.style.background = COLORS.primary; e.currentTarget.style.color = COLORS.white; e.currentTarget.style.borderColor = COLORS.primary; } }}
+                onMouseLeave={(e) => { if (currentPage !== 1) { e.currentTarget.style.background = COLORS.white; e.currentTarget.style.color = COLORS.text; e.currentTarget.style.borderColor = COLORS.border; } }}>
                 ← Anterior
               </button>
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  border: `1px solid ${COLORS.border}`,
+                  ...btnBase,
                   background: currentPage === totalPages ? COLORS.borderLight : COLORS.white,
                   color: currentPage === totalPages ? COLORS.textMuted : COLORS.text,
-                  fontSize: 13,
-                  fontWeight: 600,
                   cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-                  transition: "all 0.2s ease",
                 }}
-                onMouseEnter={(e) => {
-                  if (currentPage !== totalPages) {
-                    e.currentTarget.style.background = COLORS.primary;
-                    e.currentTarget.style.color = COLORS.white;
-                    e.currentTarget.style.borderColor = COLORS.primary;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (currentPage !== totalPages) {
-                    e.currentTarget.style.background = COLORS.white;
-                    e.currentTarget.style.color = COLORS.text;
-                    e.currentTarget.style.borderColor = COLORS.border;
-                  }
-                }}>
+                onMouseEnter={(e) => { if (currentPage !== totalPages) { e.currentTarget.style.background = COLORS.primary; e.currentTarget.style.color = COLORS.white; e.currentTarget.style.borderColor = COLORS.primary; } }}
+                onMouseLeave={(e) => { if (currentPage !== totalPages) { e.currentTarget.style.background = COLORS.white; e.currentTarget.style.color = COLORS.text; e.currentTarget.style.borderColor = COLORS.border; } }}>
                 Siguiente →
               </button>
             </div>
