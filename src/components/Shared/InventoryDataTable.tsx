@@ -23,6 +23,9 @@ interface InventoryItem {
   piso: number;
   recinto: string;
   tipoEquipo: string;
+  nCNO: string;
+  ordenCompra: string;
+  entregaRecinto: string | null;
   inicioInstalacion: string | null;
   terminoInstalacion: string | null;
 }
@@ -33,17 +36,20 @@ interface InventoryDataTableProps {
 
 // Definición de columnas
 const ALL_COLUMNS = [
-  { key: "nombre",            label: "Nombre",        defaultVisible: true },
-  { key: "familia",           label: "Familia",       defaultVisible: true },
-  { key: "tipoEquipo",        label: "Tipo Equipo",   defaultVisible: true },
-  { key: "cantidad",          label: "Cant.",         defaultVisible: true },
-  { key: "piso",              label: "Piso",          defaultVisible: true },
-  { key: "recinto",           label: "Recinto",       defaultVisible: true },
-  { key: "proveedor",         label: "Proveedor",     defaultVisible: true },
-  { key: "servicio",          label: "Servicio",      defaultVisible: true },
-  { key: "zona",              label: "Zona",          defaultVisible: false },
-  { key: "inicioInstalacion", label: "Inicio Inst.",  defaultVisible: true },
-  { key: "terminoInstalacion",label: "Término Inst.", defaultVisible: true },
+  { key: "nombre",            label: "Nombre",           defaultVisible: true },
+  { key: "familia",           label: "Familia",          defaultVisible: true },
+  { key: "tipoEquipo",        label: "Tipo Equipo",      defaultVisible: true },
+  { key: "cantidad",          label: "Cant.",            defaultVisible: true },
+  { key: "piso",              label: "Piso",             defaultVisible: true },
+  { key: "recinto",           label: "Recinto",          defaultVisible: true },
+  { key: "proveedor",         label: "Proveedor",        defaultVisible: true },
+  { key: "servicio",          label: "Servicio",         defaultVisible: true },
+  { key: "zona",              label: "Zona",             defaultVisible: false },
+  { key: "nCNO",              label: "N° CNO",           defaultVisible: true },
+  { key: "ordenCompra",       label: "Orden de Compra",  defaultVisible: true },
+  { key: "entregaRecinto",    label: "Plan Adquisición", defaultVisible: true },
+  { key: "inicioInstalacion", label: "Inicio Inst.",     defaultVisible: true },
+  { key: "terminoInstalacion",label: "Término Inst.",    defaultVisible: true },
 ] as const;
 
 type ColKey = typeof ALL_COLUMNS[number]["key"];
@@ -66,6 +72,9 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
         piso: item.piso,
         recinto: item.codigoRecinto || item.recinto || '',
         tipoEquipo: item.tipoEquipo || '',
+        nCNO: item.nCNO || '',
+        ordenCompra: item.ordenCompra || '',
+        entregaRecinto: item.entregaRecinto || null,
         inicioInstalacion: item.inicioInstalacion || null,
         terminoInstalacion: item.terminoInstalacion || null,
       }))))
@@ -78,9 +87,13 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
     proveedor: "",
     piso: "",
     servicio: "",
+    nCNO: "",
+    ordenCompra: "",
     search: "",
     fechaDesde: "",
     fechaHasta: "",
+    adqDesde: "",
+    adqHasta: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -110,6 +123,8 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
   const uniqueProveedores = useMemo(() => [...new Set(data.map(d => d.proveedor))].filter(Boolean).sort(), [data]);
   const uniquePisos = useMemo(() => [...new Set(data.map(d => d.piso))].filter(Boolean).sort((a,b) => (a as unknown as number)-(b as unknown as number)), [data]);
   const uniqueServicios = useMemo(() => [...new Set(data.map(d => d.servicio))].filter(Boolean).sort(), [data]);
+  const uniqueCNOs = useMemo(() => [...new Set(data.map(d => d.nCNO))].filter(Boolean).sort(), [data]);
+  const uniqueOrdenesCompra = useMemo(() => [...new Set(data.map(d => d.ordenCompra))].filter(Boolean).sort(), [data]);
 
   // Filtrar datos
   const filteredData = useMemo(() => {
@@ -119,13 +134,17 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
       const matchProveedor = !filters.proveedor || item.proveedor === filters.proveedor;
       const matchPiso = !filters.piso || item.piso.toString() === filters.piso;
       const matchServicio = !filters.servicio || item.servicio === filters.servicio;
+      const matchCNO = !filters.nCNO || item.nCNO === filters.nCNO;
+      const matchOrden = !filters.ordenCompra || item.ordenCompra === filters.ordenCompra;
       const matchSearch = !filters.search ||
         item.nombre?.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.recinto?.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.item?.toLowerCase().includes(filters.search.toLowerCase());
       const matchDesde = !filters.fechaDesde || !item.inicioInstalacion || item.inicioInstalacion >= filters.fechaDesde;
       const matchHasta = !filters.fechaHasta || !item.inicioInstalacion || item.inicioInstalacion <= filters.fechaHasta;
-      return matchZona && matchFamilia && matchProveedor && matchPiso && matchServicio && matchSearch && matchDesde && matchHasta;
+      const matchAdqDesde = !filters.adqDesde || !item.entregaRecinto || item.entregaRecinto >= filters.adqDesde;
+      const matchAdqHasta = !filters.adqHasta || !item.entregaRecinto || item.entregaRecinto <= filters.adqHasta;
+      return matchZona && matchFamilia && matchProveedor && matchPiso && matchServicio && matchCNO && matchOrden && matchSearch && matchDesde && matchHasta && matchAdqDesde && matchAdqHasta;
     });
   }, [data, filters]);
 
@@ -149,6 +168,7 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
     const head = [activeCols.map(c => c.label)];
     const body = filteredData.map(row =>
       activeCols.map(c => {
+        if (c.key === "entregaRecinto") return fmtDate(row.entregaRecinto);
         if (c.key === "inicioInstalacion") return fmtDate(row.inicioInstalacion);
         if (c.key === "terminoInstalacion") return fmtDate(row.terminoInstalacion);
         return String((row as any)[c.key] ?? "");
@@ -375,6 +395,20 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
             options={uniqueServicios}
             placeholder="Todos los servicios"
           />
+          <FilterSelect
+            label="N° CNO"
+            value={filters.nCNO}
+            onChange={(v) => setFilters({ ...filters, nCNO: v })}
+            options={uniqueCNOs}
+            placeholder="Todos los CNO"
+          />
+          <FilterSelect
+            label="Orden de Compra"
+            value={filters.ordenCompra}
+            onChange={(v) => setFilters({ ...filters, ordenCompra: v })}
+            options={uniqueOrdenesCompra}
+            placeholder="Todas las órdenes"
+          />
 
           {/* Fecha desde */}
           <div style={{ flex: 1, minWidth: 150 }}>
@@ -406,11 +440,41 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
             />
           </div>
 
+          {/* Adquisición desde */}
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Adq. Desde
+            </label>
+            <input
+              type="date"
+              value={filters.adqDesde}
+              onChange={(e) => setFilters({ ...filters, adqDesde: e.target.value })}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, background: COLORS.white, fontSize: 13, color: COLORS.text, cursor: "pointer" }}
+              onFocus={(e) => e.currentTarget.style.borderColor = COLORS.primary}
+              onBlur={(e) => e.currentTarget.style.borderColor = COLORS.border}
+            />
+          </div>
+
+          {/* Adquisición hasta */}
+          <div style={{ flex: 1, minWidth: 150 }}>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              Adq. Hasta
+            </label>
+            <input
+              type="date"
+              value={filters.adqHasta}
+              onChange={(e) => setFilters({ ...filters, adqHasta: e.target.value })}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, background: COLORS.white, fontSize: 13, color: COLORS.text, cursor: "pointer" }}
+              onFocus={(e) => e.currentTarget.style.borderColor = COLORS.primary}
+              onBlur={(e) => e.currentTarget.style.borderColor = COLORS.border}
+            />
+          </div>
+
           {/* Limpiar filtros */}
           {Object.values(filters).some(v => v) && (
             <div style={{ flex: 1, minWidth: 150, display: "flex", alignItems: "flex-end" }}>
               <button
-                onClick={() => setFilters({ zona: "", familia: "", proveedor: "", piso: "", servicio: "", search: "", fechaDesde: "", fechaHasta: "" })}
+                onClick={() => setFilters({ zona: "", familia: "", proveedor: "", piso: "", servicio: "", nCNO: "", ordenCompra: "", search: "", fechaDesde: "", fechaHasta: "", adqDesde: "", adqHasta: "" })}
                 style={{ ...btnBase, width: "100%", justifyContent: "center", color: COLORS.textMuted }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = COLORS.red; e.currentTarget.style.color = COLORS.white; e.currentTarget.style.borderColor = COLORS.red; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = COLORS.white; e.currentTarget.style.color = COLORS.textMuted; e.currentTarget.style.borderColor = COLORS.border; }}>
@@ -493,6 +557,15 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
                     );
                     if (col.key === "zona") return (
                       <td key={col.key} style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.zona}</td>
+                    );
+                    if (col.key === "nCNO") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text, whiteSpace: "nowrap" }}>{row.nCNO}</td>
+                    );
+                    if (col.key === "ordenCompra") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text, whiteSpace: "nowrap" }}>{row.ordenCompra}</td>
+                    );
+                    if (col.key === "entregaRecinto") return (
+                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.entregaRecinto)}</td>
                     );
                     if (col.key === "inicioInstalacion") return (
                       <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.inicioInstalacion)}</td>
