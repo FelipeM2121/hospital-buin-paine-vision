@@ -50,7 +50,7 @@ export default function App() {
                 {activeTab === "Control Documento" && <ControlDocumentos />}
 
                 <div className="dashboard-footer">
-                  <span>Hospital Salvador • Mobiliario No Clínico</span>
+                  <span>Hospital Buin Paine • Mobiliario No Clínico</span>
                   <span>Fuente: Cronograma MNC_20260327 • {S.totalQty.toLocaleString("es-CL")} unidades</span>
                 </div>
               </div>
