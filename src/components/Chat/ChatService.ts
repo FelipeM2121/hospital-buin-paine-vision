@@ -21,7 +21,7 @@ export interface ChatError {
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string;
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-haiku-4-5-20251001";
 
 const fmt = (n: number) => n.toLocaleString("es-CL");
 
@@ -461,7 +461,7 @@ ${summary.byServicio.slice().sort((a, b) => b.qty - a.qty).map(({ name: svc }) =
   return sections.join("\n\n");
 }
 
-// ── Claude API call (sin streaming — más confiable a través de proxy) ──
+// ── Claude API call con streaming SSE real ──
 async function callClaudeStream(
   messages: { role: string; content: string }[],
   systemPrompt: string,
@@ -477,11 +477,12 @@ async function callClaudeStream(
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: 1024,
+      stream: true,
       system: systemPrompt,
       messages,
     }),
-    signal: AbortSignal.timeout(180000),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!res.ok) {
@@ -489,12 +490,45 @@ async function callClaudeStream(
     throw new Error(`Claude error ${res.status}: ${(errBody as { error?: { message?: string } }).error?.message || res.statusText}`);
   }
 
-  const data = await res.json() as { content?: { type: string; text: string }[]; error?: { message: string } };
-  if (data.error) throw new Error(data.error.message);
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No se pudo leer el stream de respuesta");
 
-  const text = data.content?.[0]?.text || "Sin respuesta del modelo.";
-  onToken(text);
-  return text;
+  const decoder = new TextDecoder();
+  let fullText = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (raw === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(raw) as {
+          type: string;
+          delta?: { type: string; text: string };
+          error?: { message: string };
+        };
+        if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+          const chunk = parsed.delta.text;
+          fullText += chunk;
+          onToken(chunk);
+        } else if (parsed.type === "error") {
+          throw new Error(parsed.error?.message || "Error en stream");
+        }
+      } catch {
+        // línea malformada — ignorar
+      }
+    }
+  }
+
+  return fullText || "Sin respuesta del modelo.";
 }
 
 // ── Base system instruction ──
