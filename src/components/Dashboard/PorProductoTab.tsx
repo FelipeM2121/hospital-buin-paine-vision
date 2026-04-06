@@ -24,17 +24,17 @@ export function PorProductoTab({ summary: S }: PorProductoTabProps) {
         marginBottom: 24,
       }}>
         <ResponsiveContainer width="100%" height={600}>
-          <BarChart data={S.byNombre} layout="vertical" margin={{ left: 10 }}>
-            <XAxis 
-              type="number" 
+          <BarChart data={S.byNombre} layout="vertical" margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
+            <XAxis
+              type="number"
               tick={{ fill: COLORS.textMuted, fontSize: 11 }}
               axisLine={{ stroke: COLORS.border }}
             />
-            <YAxis 
-              type="category" 
-              dataKey="name" 
-              width={220} 
-              tick={{ fill: COLORS.text, fontSize: 11 }}
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={160}
+              tick={{ fill: COLORS.text, fontSize: 10 }}
               axisLine={{ stroke: COLORS.border }}
             />
             <Tooltip content={<CustomTooltip />} />
