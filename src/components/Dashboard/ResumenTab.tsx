@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { COLORS, CHART_COLORS, PIE_FAMILIA_COLORS } from "../../constants/theme";
 import { Icons } from "../../constants/icons";
@@ -16,6 +17,15 @@ interface ResumenTabProps {
 }
 
 export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 767);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   return (
     <>
       {/* KPIs principales */}
@@ -90,7 +100,12 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
       </div>
 
       {/* Charts: 2 columnas desktop, 1 columna mobile */}
-      <div className="charts-grid" style={{ marginBottom: 32 }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+        gap: isMobile ? 14 : 20,
+        marginBottom: 32,
+      }}>
         <div className="chart-card" style={{
           background: COLORS.white,
           borderRadius: 18,
