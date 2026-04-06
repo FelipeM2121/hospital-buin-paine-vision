@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { COLORS, CHART_COLORS } from "../../constants/theme";
 import { Icons } from "../../constants/icons";
@@ -13,6 +14,14 @@ interface PorPisoTabProps {
 }
 
 export function PorPisoTab({ summary: S }: PorPisoTabProps) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 767);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   return (
     <>
       <SectionTitle>Distribución por Piso</SectionTitle>
@@ -25,30 +34,27 @@ export function PorPisoTab({ summary: S }: PorPisoTabProps) {
         boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         marginBottom: 24,
       }}>
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <div style={{ minWidth: S.byPiso.length * 70 }}>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={S.byPiso} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: COLORS.textMuted, fontSize: 12 }}
-                  axisLine={{ stroke: COLORS.border }}
-                  interval={0}
-                />
-                <YAxis
-                  tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                  axisLine={{ stroke: COLORS.border }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
-                  {S.byPiso.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={S.byPiso} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <XAxis
+              dataKey="name"
+              tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 9 : 12 }}
+              axisLine={{ stroke: COLORS.border }}
+              interval={0}
+              height={36}
+            />
+            <YAxis
+              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
+              {S.byPiso.map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <DataTable

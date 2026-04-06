@@ -148,31 +148,28 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
           <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.text, marginBottom: 20, marginTop: 0 }}>
             Top Proveedores
           </h3>
-          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-            <div style={{ minWidth: 500 }}>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="25%">
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                    axisLine={{ stroke: COLORS.border }}
-                    interval={0}
-                    height={40}
-                  />
-                  <YAxis
-                    tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                    axisLine={{ stroke: COLORS.border }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
-                    {S.byProveedor.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
+              <XAxis
+                dataKey="name"
+                tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 8 : 11 }}
+                axisLine={{ stroke: COLORS.border }}
+                interval={0}
+                height={36}
+                tickFormatter={(v: string) => isMobile && v.length > 9 ? v.slice(0, 9) + "…" : v}
+              />
+              <YAxis
+                tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+                axisLine={{ stroke: COLORS.border }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
+                {S.byProveedor.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -214,31 +211,28 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
         }}>
           Distribución por Proveedor
         </h3>
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <div style={{ minWidth: 500 }}>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="25%">
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                  axisLine={{ stroke: COLORS.border }}
-                  interval={0}
-                  height={40}
-                />
-                <YAxis
-                  tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-                  axisLine={{ stroke: COLORS.border }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
-                  {S.byProveedor.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
+            <XAxis
+              dataKey="name"
+              tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 8 : 11 }}
+              axisLine={{ stroke: COLORS.border }}
+              interval={0}
+              height={36}
+              tickFormatter={(v: string) => isMobile && v.length > 9 ? v.slice(0, 9) + "…" : v}
+            />
+            <YAxis
+              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
+              {S.byProveedor.map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div style={{
