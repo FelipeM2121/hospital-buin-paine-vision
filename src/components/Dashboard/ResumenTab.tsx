@@ -152,7 +152,7 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
             <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
               <XAxis
                 dataKey="name"
-                tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+                tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 9 : 11 }}
                 axisLine={{ stroke: COLORS.border }}
                 interval={0}
                 height={40}
