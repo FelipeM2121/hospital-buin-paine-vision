@@ -20,12 +20,12 @@ export function PorProductoTab({ summary: S }: PorProductoTabProps) {
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const chartData = isMobile ? S.byNombre.slice(0, 20) : S.byNombre;
+  const chartData = S.byNombre.slice(0, 20);
   const chartHeight = isMobile ? 560 : 600;
 
   return (
     <>
-      <SectionTitle count={S.uniqueNombres}>Top 25 Productos</SectionTitle>
+      <SectionTitle count={S.uniqueNombres}>Top 20 Productos</SectionTitle>
 
       <div style={{
         background: COLORS.white,
