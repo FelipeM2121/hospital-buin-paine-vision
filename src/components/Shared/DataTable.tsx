@@ -29,11 +29,13 @@ export function DataTable({ data, columns, maxRows = 10 }: DataTableProps) {
       border: `1px solid ${COLORS.borderLight}`,
       boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
     }}>
+      {/* Scroll wrapper for mobile */}
+      <div className="data-table-scroll">
       {/* Header */}
       <div style={{
         display: "grid",
         gridTemplateColumns: columns.map(c => c.width || "1fr").join(" "),
-        columnGap: 24,
+        columnGap: 16,
         background: `${COLORS.primary}08`,
         borderBottom: `1px solid ${COLORS.borderLight}`,
         padding: "13px 20px",
@@ -42,6 +44,8 @@ export function DataTable({ data, columns, maxRows = 10 }: DataTableProps) {
         color: COLORS.primary,
         letterSpacing: 0.8,
         textTransform: "uppercase",
+        minWidth: "fit-content",
+        width: "100%",
       }}>
         {columns.map((col) => (
           <div key={col.key} style={{ textAlign: col.align || "left" }}>
@@ -55,10 +59,12 @@ export function DataTable({ data, columns, maxRows = 10 }: DataTableProps) {
         <div key={i} style={{
           display: "grid",
           gridTemplateColumns: columns.map(c => c.width || "1fr").join(" "),
-          columnGap: 24,
+          columnGap: 16,
           padding: "13px 20px",
           borderBottom: i < display.length - 1 ? `1px solid ${COLORS.borderLight}` : "none",
           transition: "background 0.15s ease",
+          minWidth: "fit-content",
+          width: "100%",
         }}
         onMouseEnter={(e) => e.currentTarget.style.background = `${COLORS.primary}05`}
         onMouseLeave={(e) => e.currentTarget.style.background = COLORS.white}>
@@ -78,6 +84,8 @@ export function DataTable({ data, columns, maxRows = 10 }: DataTableProps) {
           })}
         </div>
       ))}
+
+      </div>{/* end data-table-scroll */}
 
       {/* Ver más */}
       {data.length > maxRows && (
