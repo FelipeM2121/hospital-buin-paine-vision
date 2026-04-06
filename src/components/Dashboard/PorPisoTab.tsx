@@ -25,26 +25,30 @@ export function PorPisoTab({ summary: S }: PorPisoTabProps) {
         boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         marginBottom: 24,
       }}>
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={S.byPiso} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <XAxis
-              dataKey="name"
-              tick={{ fill: COLORS.textMuted, fontSize: 12 }}
-              axisLine={{ stroke: COLORS.border }}
-              interval={0}
-            />
-            <YAxis
-              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-              axisLine={{ stroke: COLORS.border }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
-              {S.byPiso.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={{ minWidth: S.byPiso.length * 70 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={S.byPiso} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: COLORS.textMuted, fontSize: 12 }}
+                  axisLine={{ stroke: COLORS.border }}
+                  interval={0}
+                />
+                <YAxis
+                  tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+                  axisLine={{ stroke: COLORS.border }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
+                  {S.byPiso.map((_, i) => (
+                    <Cell key={i} fill={CHART_COLORS[i]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       <DataTable
