@@ -255,8 +255,8 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
           columns={[
             { key: "rank", label: "#", align: "center", mono: true, width: "60px" },
             { key: "name", label: "Proveedor", highlight: true },
-            { key: "qty", label: "Cantidad", align: "right", mono: true, width: "120px" },
-            { key: "pctQty", label: "% del Total", align: "right", mono: true, width: "120px" },
+            { key: "qty", label: "Cantidad", align: "right", mono: true, width: "100px", render: (v) => v.toLocaleString("es-CL") },
+            { key: "pctQty", label: "% del Total", align: "right", mono: true, width: "110px" },
             {
               key: "qty",
               label: "Distribución",

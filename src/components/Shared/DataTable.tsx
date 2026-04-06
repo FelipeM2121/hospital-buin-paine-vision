@@ -77,6 +77,7 @@ export function DataTable({ data, columns, maxRows = 10 }: DataTableProps) {
                 color: col.highlight ? COLORS.text : COLORS.textMuted,
                 fontWeight: col.highlight ? 600 : 400,
                 fontFamily: col.mono ? "'SF Mono', 'Monaco', monospace" : "inherit",
+                fontVariantNumeric: col.mono ? "tabular-nums" : "normal",
               }}>
                 {col.render ? col.render(val, row) : val}
               </div>
