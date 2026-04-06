@@ -211,14 +211,14 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
         }}>
           Distribución por Proveedor
         </h3>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
             <XAxis
               dataKey="name"
               tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 8 : 11 }}
               axisLine={{ stroke: COLORS.border }}
               interval={0}
-              height={36}
+              height={isMobile ? 36 : 50}
               tickFormatter={(v: string) => isMobile && v.length > 9 ? v.slice(0, 9) + "…" : v}
             />
             <YAxis
