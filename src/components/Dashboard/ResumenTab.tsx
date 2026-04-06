@@ -89,71 +89,70 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
         />
       </div>
 
-      {/* Distribución por Familia */}
-      <div style={{
-        background: COLORS.white,
-        borderRadius: 18,
-        padding: 24,
-        border: `1px solid ${COLORS.borderLight}`,
-        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-        marginBottom: 24,
-      }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.text, marginBottom: 20, marginTop: 0 }}>
-          Distribución por Familia
-        </h3>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart
-            data={S.byFamilia}
-            layout="vertical"
-            margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
-            <XAxis type="number" tick={{ fontSize: 10, fill: COLORS.textMuted }} />
-            <YAxis
-              dataKey="name"
-              type="category"
-              tick={{ fontSize: 12, fill: COLORS.text }}
-              width={95}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="qty" radius={[0, 8, 8, 0]}>
-              {S.byFamilia.map((entry, i) => (
-                <Cell key={i} fill={PIE_FAMILIA_COLORS[entry.name] || CHART_COLORS[i]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Charts: 2 columnas desktop, 1 columna mobile */}
+      <div className="charts-grid" style={{ marginBottom: 32 }}>
+        <div className="chart-card" style={{
+          background: COLORS.white,
+          borderRadius: 18,
+          padding: 24,
+          border: `1px solid ${COLORS.borderLight}`,
+          boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.text, marginBottom: 20, marginTop: 0 }}>
+            Distribución por Familia
+          </h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart
+              data={S.byFamilia}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+              <XAxis type="number" tick={{ fontSize: 10, fill: COLORS.textMuted }} />
+              <YAxis
+                dataKey="name"
+                type="category"
+                tick={{ fontSize: 12, fill: COLORS.text }}
+                width={95}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="qty" radius={[0, 8, 8, 0]}>
+                {S.byFamilia.map((entry, i) => (
+                  <Cell key={i} fill={PIE_FAMILIA_COLORS[entry.name] || CHART_COLORS[i]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-      {/* Top Proveedores */}
-      <div style={{
-        background: COLORS.white,
-        borderRadius: 18,
-        padding: 24,
-        border: `1px solid ${COLORS.borderLight}`,
-        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-        marginBottom: 32,
-      }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.text, marginBottom: 20, marginTop: 0 }}>
-          Top Proveedores
-        </h3>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={S.byProveedor}>
-            <XAxis
-              dataKey="name"
-              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-              axisLine={{ stroke: COLORS.border }}
-            />
-            <YAxis
-              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-              axisLine={{ stroke: COLORS.border }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
-              {S.byProveedor.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="chart-card" style={{
+          background: COLORS.white,
+          borderRadius: 18,
+          padding: 24,
+          border: `1px solid ${COLORS.borderLight}`,
+          boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: COLORS.text, marginBottom: 20, marginTop: 0 }}>
+            Top Proveedores
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={S.byProveedor}>
+              <XAxis
+                dataKey="name"
+                tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+                axisLine={{ stroke: COLORS.border }}
+              />
+              <YAxis
+                tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+                axisLine={{ stroke: COLORS.border }}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
+                {S.byProveedor.map((_, i) => (
+                  <Cell key={i} fill={CHART_COLORS[i]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Análisis Completo de Proveedores */}
