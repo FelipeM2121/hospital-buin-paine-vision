@@ -26,7 +26,7 @@ export function PorPisoTab({ summary: S }: PorPisoTabProps) {
         marginBottom: 24,
       }}>
         <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={S.byPiso} margin={{ top: 20, right: 8, left: 0, bottom: 5 }}>
+          <BarChart data={S.byPiso} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <XAxis
               dataKey="name"
               tick={{ fill: COLORS.textMuted, fontSize: 12 }}

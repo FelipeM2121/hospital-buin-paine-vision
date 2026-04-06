@@ -81,16 +81,14 @@ export function PorFechaTab({ summary: S }: PorFechaTabProps) {
         boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         marginBottom: 24,
       }}>
-        <ResponsiveContainer width="100%" height={360}>
+        <ResponsiveContainer width="100%" height={320}>
           <BarChart data={S.byMes.map(m => ({ ...m, name: formatMonth(m.name) }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <XAxis
               dataKey="name"
               tick={{ fill: COLORS.textMuted, fontSize: 11 }}
               axisLine={{ stroke: COLORS.border }}
               interval={0}
-              angle={-40}
-              textAnchor="end"
-              height={100}
+              height={40}
             />
             <YAxis
               tick={{ fill: COLORS.textMuted, fontSize: 11 }}
@@ -138,16 +136,14 @@ export function PorFechaTab({ summary: S }: PorFechaTabProps) {
         boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
         marginBottom: 24,
       }}>
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={S.bySemana} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <XAxis
               dataKey="name"
               tick={{ fill: COLORS.textMuted, fontSize: 11 }}
               axisLine={{ stroke: COLORS.border }}
               interval={0}
-              angle={-40}
-              textAnchor="end"
-              height={100}
+              height={40}
             />
             <YAxis
               tick={{ fill: COLORS.textMuted, fontSize: 11 }}
