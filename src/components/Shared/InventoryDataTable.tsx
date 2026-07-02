@@ -46,7 +46,6 @@ const ALL_COLUMNS = [
   { key: "proveedor",         label: "Proveedor",        defaultVisible: true },
   { key: "servicio",          label: "Servicio",         defaultVisible: true },
   { key: "zona",              label: "Zona",             defaultVisible: false },
-  { key: "nCNO",              label: "N° CNO",           defaultVisible: true },
   { key: "entregaRecinto",    label: "Plan Adquisición", defaultVisible: true },
   { key: "inicioInstalacion", label: "Inicio Inst.",     defaultVisible: true },
   { key: "terminoInstalacion",label: "Término Inst.",    defaultVisible: true },
@@ -536,9 +535,6 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
                     );
                     if (col.key === "zona") return (
                       <td key={col.key} style={{ padding: "12px 16px", fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.zona}</td>
-                    );
-                    if (col.key === "nCNO") return (
-                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text, whiteSpace: "nowrap" }}>{row.nCNO}</td>
                     );
                     if (col.key === "entregaRecinto") return (
                       <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.primary, textAlign: "center", fontWeight: 600, whiteSpace: "nowrap" }}>{fmtDate(row.entregaRecinto)}</td>
