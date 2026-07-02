@@ -507,8 +507,9 @@ ${summary.byServicio.slice().sort((a, b) => b.qty - a.qty).map(({ name: svc }) =
     if (matchedRecintos.length > 0) {
       const recintoExtras = matchedRecintos.map((r) => {
         const info = idx.recintoDetail[r];
-        const prodStr = Object.entries(info.prods).sort(([,a],[,b]) => b-a).map(([n, q]) => `    ${n}: ${fmt(q)} uds`).join("\n");
-        return `  RECINTO "${r}":\n    Piso: ${info.piso} | Servicio: ${info.servicio} | Zona: ${info.zona}\n    Total: ${fmt(info.qty)} unidades\n    Contenido:\n${prodStr}`;
+        const entries = Object.entries(info.prods).sort(([,a],[,b]) => b-a);
+        const prodStr = entries.map(([n, q]) => `    ${n}: ${fmt(q)} uds`).join("\n");
+        return `  RECINTO "${r}":\n    Piso: ${info.piso} | Servicio: ${info.servicio} | Zona: ${info.zona}\n    Total: ${fmt(info.qty)} unidades\n    Contenido (${entries.length} de ${entries.length} tipos de producto — LISTA COMPLETA, no omitir ninguno):\n${prodStr}\n    Verificación obligatoria: la tabla que entregues debe tener EXACTAMENTE ${entries.length} filas de producto y la suma de sus cantidades debe dar ${fmt(info.qty)}`;
       });
       sections.unshift(`══ RECINTOS ESPECÍFICOS CONSULTADOS ══\n${recintoExtras.join("\n\n")}`);
     }
@@ -633,6 +634,8 @@ REGLAS ABSOLUTAS:
 6. Cita cifras exactas siempre: "1.265 unidades", no "aproximadamente 1.300"
 7. Cuando alguien pida "detalle", "resumen" o "total": entrega desglose completo sin omitir ninguna categoría
 8. Si el usuario envía una foto de un recinto: el código de recinto ya fue detectado y buscado en el inventario ANTES de esta conversación. Si aparece la sección "RECINTO DETECTADO EN FOTO", úsala como fuente de verdad para responder qué mobiliario corresponde a ese recinto (piso, servicio, cantidad y detalle de productos). Si esa sección indica que no hubo coincidencia, dilo con claridad y pide al usuario que confirme el código manualmente — nunca inventes datos de un recinto que no está en el inventario
+9. Al responder sobre un recinto específico (secciones "RECINTOS ESPECÍFICOS CONSULTADOS" o "RECINTO DETECTADO EN FOTO"): incluye SIEMPRE una fila por CADA producto listado en "Contenido"/"Detalle", sin omitir, resumir ni fusionar ninguno — aunque sean solo 2 o 3 productos, muéstralos todos. Antes de enviar tu respuesta, suma mentalmente las cantidades de las filas que escribiste y confirma que coinciden exactamente con el total indicado; si no coinciden, revisa qué fila falta y agrégala antes de responder
+10. Si el usuario pregunta "cuál falta" o algo similar sobre un recinto ya mencionado en la conversación, vuelve a mirar el detalle completo del recinto en el contexto (no lo inventes ni pidas más información si los datos ya están disponibles)
 
 ══════════════════════════════════════════
 CATÁLOGO MELMAN — LINKS DE PRODUCTOS
@@ -880,6 +883,7 @@ class ChatServiceClass {
   private idx: DataIndex | null = null;
   private ollamaAvailable: boolean | null = null;
   private conversationHistory: ApiMessage[] = [];
+  private lastRecintoCode: string | null = null;
 
   setData(data: RawItem[], summary: SummaryData, eettFiles: EETTFile[]) {
     this.data = data;
@@ -896,6 +900,7 @@ class ChatServiceClass {
 
   clearHistory() {
     this.conversationHistory = [];
+    this.lastRecintoCode = null;
   }
 
   async sendMessage(
@@ -936,14 +941,16 @@ class ChatServiceClass {
         }
         if (matched) {
           const info = this.idx.recintoDetail[matched.code];
-          const prodStr = Object.entries(info.prods).sort(([, a], [, b]) => b - a).map(([n, q]) => `  • ${n}: ${fmt(q)} uds`).join("\n");
+          const entries = Object.entries(info.prods).sort(([, a], [, b]) => b - a);
+          const prodStr = entries.map(([n, q]) => `  • ${n}: ${fmt(q)} uds`).join("\n");
           photoSection = `══ RECINTO DETECTADO EN FOTO ══
 Código leído en la placa: "${rawCode}"
 ${matched.exact ? "Coincidencia exacta" : "Coincidencia aproximada (posible error de lectura)"} en el inventario: "${matched.code}"
 Piso: ${info.piso} | Servicio: ${info.servicio} | Zona: ${info.zona}
 Total mobiliario en este recinto: ${fmt(info.qty)} unidades
-Detalle:
-${prodStr}`;
+Detalle (${entries.length} tipos de producto — LISTA COMPLETA, no omitir ninguno):
+${prodStr}
+Verificación obligatoria: la tabla que entregues debe tener EXACTAMENTE ${entries.length} filas de producto y la suma de sus cantidades debe dar ${fmt(info.qty)}`;
         } else {
           photoSection = `══ RECINTO DETECTADO EN FOTO ══
 Código leído en la placa: "${rawCode || "no se pudo leer ningún código"}"
@@ -952,7 +959,19 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
       }
 
       // El mensaje efectivo para detección de tópicos incluye el código de recinto ya resuelto (si lo hay)
-      const effectiveMsg = matched ? `${message} ${matched.code}` : message;
+      let effectiveMsg = matched ? `${message} ${matched.code}` : message;
+
+      // "Recinto pegajoso": si este mensaje menciona un recinto, lo recordamos para preguntas de
+      // seguimiento (ej. "¿cuál falta?") que no repiten el código explícitamente
+      const knownCodes = Object.keys(this.idx.recintoDetail);
+      const normalizeText = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const effectiveMsgNorm = normalizeText(effectiveMsg);
+      const mentionedRecinto = knownCodes.find((r) => effectiveMsgNorm.includes(normalizeText(r)));
+      if (mentionedRecinto) {
+        this.lastRecintoCode = mentionedRecinto;
+      } else if (this.lastRecintoCode) {
+        effectiveMsg = `${effectiveMsg} ${this.lastRecintoCode}`;
+      }
 
       // Detect what the user is asking about
       const { topics, matches } = detectTopics(effectiveMsg);
