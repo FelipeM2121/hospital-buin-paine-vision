@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { ArrowUp, Square, Paperclip, X } from "lucide-react";
+import { ArrowUp, Square, Camera, X } from "lucide-react";
 
 export interface ChatImageAttachment {
   dataUrl: string;
@@ -212,7 +212,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onMouseEnter={(e) => { e.currentTarget.style.background = "#F0EDE8"; e.currentTarget.style.color = "#1C1B1A"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = image ? "#F5E4DB" : "transparent"; e.currentTarget.style.color = image ? "#C9623F" : "#9B958E"; }}
             >
-              <Paperclip size={16} />
+              <Camera size={16} />
             </button>
 
             {/* Model badge */}
