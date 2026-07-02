@@ -8,7 +8,6 @@ const TAB_TITLES: Record<string, string> = {
   "Por Producto":      "Top Productos",
   "Por Fecha":         "Cronograma de Instalación",
   "Esp. Técnicas":     "Especificaciones Técnicas",
-  "Control Documento": "Control Documentos",
 };
 
 interface HeaderProps {

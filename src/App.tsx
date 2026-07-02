@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ControlDocumentos } from "./components/ControlDocumentos";
 import {
   ResumenTab,
   PorPisoTab,
@@ -40,8 +39,6 @@ export default function App() {
             {activeTab === "Esp. Técnicas" && (
               <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
             )}
-            {activeTab === "Control Documento" && <ControlDocumentos />}
-
             <div className="dashboard-footer">
               <span>Hospital Buin Paine • Mobiliario No Clínico</span>
               <span>Fuente: Cronograma MNC_20260327 • {S.totalQty.toLocaleString("es-CL")} unidades</span>
