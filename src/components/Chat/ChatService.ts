@@ -961,16 +961,56 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
       // El mensaje efectivo para detección de tópicos incluye el código de recinto ya resuelto (si lo hay)
       let effectiveMsg = matched ? `${message} ${matched.code}` : message;
 
-      // "Recinto pegajoso": si este mensaje menciona un recinto, lo recordamos para preguntas de
-      // seguimiento (ej. "¿cuál falta?") que no repiten el código explícitamente
+      // Códigos de recinto mencionados DIRECTAMENTE en este turno (texto o foto), antes de aplicar "sticky"
       const knownCodes = Object.keys(this.idx.recintoDetail);
       const normalizeText = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
       const effectiveMsgNorm = normalizeText(effectiveMsg);
-      const mentionedRecinto = knownCodes.find((r) => effectiveMsgNorm.includes(normalizeText(r)));
-      if (mentionedRecinto) {
-        this.lastRecintoCode = mentionedRecinto;
+      const directMatches = knownCodes.filter((r) => effectiveMsgNorm.includes(normalizeText(r)));
+
+      // "Recinto pegajoso": recordamos el último para preguntas de seguimiento
+      // (ej. "¿cuál falta?") que no repiten el código explícitamente
+      if (directMatches.length > 0) {
+        this.lastRecintoCode = directMatches[0];
       } else if (this.lastRecintoCode) {
         effectiveMsg = `${effectiveMsg} ${this.lastRecintoCode}`;
+      }
+
+      // ── Camino determinístico: si se menciona UN solo recinto y la pregunta es
+      // una consulta simple de inventario, respondemos con datos exactos del código
+      // (sin pasar por el LLM) para eliminar el riesgo de que el modelo omita filas.
+      const complexIntentRe = /compar|diferencia|eett|ficha|certificad|proveedor|cuando|fecha|instala|material|dimension|color/;
+      if (directMatches.length === 1 && !complexIntentRe.test(effectiveMsgNorm)) {
+        const code = directMatches[0];
+        const info = this.idx.recintoDetail[code];
+        const entries = Object.entries(info.prods).sort(([, a], [, b]) => b - a);
+        const tableRows = entries.map(([n, q]) => `| ${n} | ${fmt(q)} |`).join("\n");
+        const approxWarning = matched && !matched.exact && matched.code === code
+          ? `_Nota: el código leído en la foto no coincidió exacto — se usó la coincidencia más cercana en el inventario ("${code}"). Verifica que sea el recinto correcto._\n\n`
+          : "";
+        const answer = `${approxWarning}**Recinto ${code} — ${info.servicio}**\nPiso: ${info.piso} | Servicio: ${info.servicio} | Zona: ${info.zona}\n\n| Producto | Cantidad |\n|---|---|\n${tableRows}\n| **Total** | **${fmt(info.qty)}** |\n\n¿Deseas ver la ficha técnica (EETT) de alguno de estos productos, o tienes otra consulta?`;
+
+        onToken?.(answer);
+        const detHistoryContent: ApiMessage["content"] = image
+          ? [{ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.dataUrl.split(",")[1] || "" } }, { type: "text", text: message.trim() || "(foto del recinto)" }]
+          : message;
+        this.conversationHistory.push({ role: "user", content: detHistoryContent });
+        this.conversationHistory.push({ role: "assistant", content: answer });
+        if (this.conversationHistory.length > 4) {
+          this.conversationHistory = this.conversationHistory.slice(-4);
+        }
+
+        return {
+          response: {
+            id: Math.random().toString(36).substr(2, 9),
+            response: answer,
+            sessionId: "deterministic",
+            tokensUsed: 0,
+            model: "deterministic-lookup",
+            timestamp: new Date().toISOString(),
+            detectedRecinto: code,
+          },
+          error: null,
+        };
       }
 
       // Detect what the user is asking about
