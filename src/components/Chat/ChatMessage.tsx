@@ -176,11 +176,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           background: "#1C1B1A",
           color: "#F5F3EE",
           borderRadius: "18px 18px 4px 18px",
-          padding: "10px 16px",
+          padding: message.image ? "10px" : "10px 16px",
           maxWidth: "72%",
           fontSize: "14px", lineHeight: 1.65,
           whiteSpace: "pre-wrap", wordBreak: "break-word",
         }}>
+          {message.image && (
+            <img
+              src={message.image}
+              alt="Foto del recinto enviada"
+              style={{
+                display: "block", width: "100%", maxWidth: "260px",
+                borderRadius: "12px", marginBottom: message.content ? "8px" : 0,
+              }}
+            />
+          )}
           {message.content}
         </div>
       </div>
@@ -193,6 +203,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {message.detectedRecinto && (
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: "6px",
+          background: "#F5E4DB", color: "#8B3A22",
+          borderRadius: "999px", padding: "4px 12px",
+          fontSize: "12px", fontWeight: 600,
+          marginBottom: "10px",
+        }}>
+          📍 Recinto detectado: {message.detectedRecinto}
+        </div>
+      )}
       <div style={{ fontSize: "14px", color: "#1C1B1A" }}>
         {renderMarkdown(message.content)}
       </div>

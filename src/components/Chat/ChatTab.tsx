@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { SquarePen, AlertCircle } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
-import { ChatInput } from "./ChatInput";
+import { ChatInput, ChatImageAttachment } from "./ChatInput";
 import { ChatService, Message, ChatError } from "./ChatService";
 import type { RawItem, SummaryData, EETTFile } from "../../types";
 
@@ -14,6 +14,7 @@ interface ChatTabProps {
 export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) => {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [analyzingPhoto, setAnalyzingPhoto] = React.useState(false);
   const [error, setError] = React.useState<ChatError | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const firstName = "";
@@ -26,8 +27,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = async (userMessage: string) => {
+  const handleSendMessage = async (userMessage: string, image?: ChatImageAttachment) => {
     setIsLoading(true);
+    setAnalyzingPhoto(!!image);
     setError(null);
 
     const userMsg: Message = {
@@ -35,6 +37,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
       role: "user",
       content: userMessage,
       timestamp: new Date().toISOString(),
+      image: image?.dataUrl,
     };
     const assistantId = Math.random().toString(36).substr(2, 9);
 
@@ -51,6 +54,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
         undefined,
         undefined,
         (token: string) => {
+          setAnalyzingPhoto(false);
           setMessages((prev) => {
             const updated = [...prev];
             const idx = updated.findIndex((m) => m.id === assistantId);
@@ -60,17 +64,26 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
             return updated;
           });
         },
+        image,
       );
 
       if (result.error) {
         setMessages((prev) => prev.filter((m) => m.id !== assistantId));
         setError(result.error);
+      } else if (result.response?.detectedRecinto) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          const idx = updated.findIndex((m) => m.id === assistantId);
+          if (idx !== -1) updated[idx] = { ...updated[idx], detectedRecinto: result.response!.detectedRecinto };
+          return updated;
+        });
       }
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== assistantId));
       setError({ error: true, message: "Error al procesar la solicitud", code: "UNKNOWN_ERROR" });
     } finally {
       setIsLoading(false);
+      setAnalyzingPhoto(false);
     }
   };
 
@@ -170,6 +183,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
           <div style={{
             padding: "8px 24px 8px 28px",
             maxWidth: "820px", margin: "0 auto", width: "100%",
+            display: "flex", alignItems: "center", gap: "10px",
           }}>
             <div style={{ display: "flex", gap: "5px", alignItems: "center", paddingTop: "4px" }}>
               {[0, 1, 2].map((dot) => (
@@ -181,6 +195,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ data, summary, eettFiles }) =>
                 }} />
               ))}
             </div>
+            {analyzingPhoto && (
+              <span style={{ fontSize: "12.5px", color: "#9B958E" }}>Identificando recinto en la foto…</span>
+            )}
           </div>
         )}
 
