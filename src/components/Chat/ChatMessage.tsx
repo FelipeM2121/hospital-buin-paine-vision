@@ -55,9 +55,22 @@ function renderMarkdown(text: string): React.ReactNode[] {
   };
 
   const flushTable = () => {
-    if (tableRows.length < 2) return;
+    if (tableRows.length < 2) {
+      // No es una tabla real (falta encabezado + datos) — renderiza la(s) línea(s)
+      // acumulada(s) como texto normal en vez de perderlas silenciosamente
+      tableRows.forEach((row, ri) => {
+        result.push(
+          <div key={`tbl-fallback-${i}-${ri}`} style={{ margin: "2px 0", color: "#1C1B1A", lineHeight: 1.7 }}>
+            {parseInline(row.join(" | "))}
+          </div>
+        );
+      });
+      tableRows = [];
+      inTable = false;
+      return;
+    }
     const headers = tableRows[0];
-    const dataRows = tableRows.slice(2);
+    const dataRows = tableRows.slice(1);
     result.push(
       <div key={`tbl-${i}`} style={{ overflowX: "auto", margin: "12px 0", borderRadius: "10px", border: "1px solid #E8E5DF" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
@@ -98,6 +111,10 @@ function renderMarkdown(text: string): React.ReactNode[] {
     if (line.includes("|") && !/^[\|\s\-:]+$/.test(line.trim())) {
       if (!inTable) { inTable = true; tableRows = []; }
       tableRows.push(line.split("|").map((c) => c.trim()).filter(Boolean));
+      i++; continue;
+    } else if (inTable && /^[\|\s\-:]+$/.test(line.trim()) && /\|/.test(line)) {
+      // Línea separadora (|---|---|) dentro de una tabla en curso — se omite
+      // sin cerrar la tabla, para no perder el encabezado ya acumulado
       i++; continue;
     } else if (inTable) {
       flushTable();
