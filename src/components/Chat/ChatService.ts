@@ -206,6 +206,37 @@ function matchRecintoCode(rawCode: string, knownCodes: string[]): { code: string
   return null;
 }
 
+function normalizeForSearch(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+const RECINTO_CODE_CHAR_RE = /[a-z0-9._]/i;
+
+// Encuentra códigos de recinto mencionados como TOKEN completo en un texto — no como
+// substring de un código más largo. Ej: "C.5.7.19" NO debe matchear el recinto "C.5.7.1"
+// aunque "c.5.7.1" sea substring literal de "c.5.7.19" (hay 333 colisiones así entre los 815 códigos).
+function findMentionedRecintoCodes(text: string, knownCodes: string[]): string[] {
+  const norm = normalizeForSearch(text);
+  const found: string[] = [];
+  const isBoundary = (ch: string) => !ch || !RECINTO_CODE_CHAR_RE.test(ch);
+  for (const code of knownCodes) {
+    const codeNorm = normalizeForSearch(code);
+    let searchFrom = 0;
+    while (searchFrom <= norm.length) {
+      const idx = norm.indexOf(codeNorm, searchFrom);
+      if (idx === -1) break;
+      const before = idx > 0 ? norm[idx - 1] : "";
+      const after = idx + codeNorm.length < norm.length ? norm[idx + codeNorm.length] : "";
+      if (isBoundary(before) && isBoundary(after)) {
+        found.push(code);
+        break;
+      }
+      searchFrom = idx + 1;
+    }
+  }
+  return found;
+}
+
 // ── Detect what the user is asking about ──
 type Topic = "resumen" | "piso" | "servicio" | "producto" | "proveedor" | "eett" | "fecha" | "zona" | "familia" | "recinto";
 
@@ -500,10 +531,7 @@ ${summary.byServicio.slice().sort((a, b) => b.qty - a.qty).map(({ name: svc }) =
 
   // Detección de recintos específicos mencionados en la consulta
   if (originalMsg) {
-    const msgNorm = originalMsg.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const matchedRecintos = Object.keys(idx.recintoDetail).filter((r) =>
-      msgNorm.includes(r.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
-    );
+    const matchedRecintos = findMentionedRecintoCodes(originalMsg, Object.keys(idx.recintoDetail));
     if (matchedRecintos.length > 0) {
       const recintoExtras = matchedRecintos.map((r) => {
         const info = idx.recintoDetail[r];
@@ -963,9 +991,8 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
 
       // Códigos de recinto mencionados DIRECTAMENTE en este turno (texto o foto), antes de aplicar "sticky"
       const knownCodes = Object.keys(this.idx.recintoDetail);
-      const normalizeText = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const effectiveMsgNorm = normalizeText(effectiveMsg);
-      const directMatches = knownCodes.filter((r) => effectiveMsgNorm.includes(normalizeText(r)));
+      const effectiveMsgNorm = normalizeForSearch(effectiveMsg);
+      const directMatches = findMentionedRecintoCodes(effectiveMsg, knownCodes);
 
       // "Recinto pegajoso": recordamos el último para preguntas de seguimiento
       // (ej. "¿cuál falta?") que no repiten el código explícitamente
