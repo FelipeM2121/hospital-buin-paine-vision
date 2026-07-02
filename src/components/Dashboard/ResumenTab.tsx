@@ -388,47 +388,6 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
         borderRadius: 18,
         padding: 24,
         border: `1px solid ${COLORS.borderLight}`,
-        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
-        marginBottom: 32,
-      }}>
-        <h3 style={{
-          fontSize: 16,
-          fontWeight: 700,
-          color: COLORS.text,
-          marginBottom: 20,
-          marginTop: 0,
-        }}>
-          Distribución por Proveedor
-        </h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={S.byProveedor} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
-            <XAxis
-              dataKey="name"
-              tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 8 : 11 }}
-              axisLine={{ stroke: COLORS.border }}
-              interval={0}
-              height={isMobile ? 36 : 50}
-              tickFormatter={(v: string) => isMobile && v.length > 9 ? v.slice(0, 9) + "…" : v}
-            />
-            <YAxis
-              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
-              axisLine={{ stroke: COLORS.border }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
-              {S.byProveedor.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div style={{
-        background: COLORS.white,
-        borderRadius: 18,
-        padding: 24,
-        border: `1px solid ${COLORS.borderLight}`,
         boxShadow: "0 2px 16px rgba(99,102,941,0.05)",
         marginBottom: 32,
       }}>
