@@ -1,4 +1,5 @@
 import type { RawItem, SummaryData, EETTFile } from "../../types";
+import { RECINTO_NOMBRES } from "../../data/recintoNombres";
 
 export interface Message {
   id: string;
@@ -537,7 +538,8 @@ ${summary.byServicio.slice().sort((a, b) => b.qty - a.qty).map(({ name: svc }) =
         const info = idx.recintoDetail[r];
         const entries = Object.entries(info.prods).sort(([,a],[,b]) => b-a);
         const prodStr = entries.map(([n, q]) => `    ${n}: ${fmt(q)} uds`).join("\n");
-        return `  RECINTO "${r}":\n    Piso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}\n    Total: ${fmt(info.qty)} unidades\n    Contenido (${entries.length} de ${entries.length} tipos de producto — LISTA COMPLETA, no omitir ninguno):\n${prodStr}\n    Verificación obligatoria: la tabla que entregues debe tener EXACTAMENTE ${entries.length} filas de producto y la suma de sus cantidades debe dar ${fmt(info.qty)}`;
+        const nombreRecinto = RECINTO_NOMBRES[r];
+        return `  RECINTO "${r}"${nombreRecinto ? ` — ${nombreRecinto}` : ""}:\n    Piso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}\n    Total: ${fmt(info.qty)} unidades\n    Contenido (${entries.length} de ${entries.length} tipos de producto — LISTA COMPLETA, no omitir ninguno):\n${prodStr}\n    Verificación obligatoria: la tabla que entregues debe tener EXACTAMENTE ${entries.length} filas de producto y la suma de sus cantidades debe dar ${fmt(info.qty)}`;
       });
       sections.unshift(`══ RECINTOS ESPECÍFICOS CONSULTADOS ══\n${recintoExtras.join("\n\n")}`);
     }
@@ -971,9 +973,10 @@ class ChatServiceClass {
           const info = this.idx.recintoDetail[matched.code];
           const entries = Object.entries(info.prods).sort(([, a], [, b]) => b - a);
           const prodStr = entries.map(([n, q]) => `  • ${n}: ${fmt(q)} uds`).join("\n");
+          const nombreRecinto = RECINTO_NOMBRES[matched.code];
           photoSection = `══ RECINTO DETECTADO EN FOTO ══
 Código leído en la placa: "${rawCode}"
-${matched.exact ? "Coincidencia exacta" : "Coincidencia aproximada (posible error de lectura)"} en el inventario: "${matched.code}"
+${matched.exact ? "Coincidencia exacta" : "Coincidencia aproximada (posible error de lectura)"} en el inventario: "${matched.code}"${nombreRecinto ? ` — ${nombreRecinto}` : ""}
 Piso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}
 Total mobiliario en este recinto: ${fmt(info.qty)} unidades
 Detalle (${entries.length} tipos de producto — LISTA COMPLETA, no omitir ninguno):
@@ -1014,7 +1017,9 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
         const approxWarning = matched && !matched.exact && matched.code === code
           ? `_Nota: el código leído en la foto no coincidió exacto — se usó la coincidencia más cercana en el inventario ("${code}"). Verifica que sea el recinto correcto._\n\n`
           : "";
-        const answer = `${approxWarning}**Recinto ${code} — ${info.servicio}**\nPiso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}\n\n| Producto | Cantidad |\n|---|---|\n${tableRows}\n| **Total** | **${fmt(info.qty)}** |\n\n¿Deseas ver la ficha técnica (EETT) de alguno de estos productos, o tienes otra consulta?`;
+        const nombreRecinto = RECINTO_NOMBRES[code];
+        const titulo = nombreRecinto ? `${nombreRecinto} — Recinto ${code}` : `Recinto ${code} — ${info.servicio}`;
+        const answer = `${approxWarning}**${titulo}**\nPiso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}\n\n| Producto | Cantidad |\n|---|---|\n${tableRows}\n| **Total** | **${fmt(info.qty)}** |\n\n¿Deseas ver la ficha técnica (EETT) de alguno de estos productos, o tienes otra consulta?`;
 
         onToken?.(answer);
         const detHistoryContent: ApiMessage["content"] = image

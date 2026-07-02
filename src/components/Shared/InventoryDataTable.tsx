@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 import { COLORS, PIE_FAMILIA_COLORS } from "../../constants/theme";
 import { SectionTitle } from "./SectionTitle";
 import { Icons } from "../../constants/icons";
+import { RECINTO_NOMBRES } from "../../data/recintoNombres";
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function fmtDate(d: string | null): string {
@@ -137,6 +138,7 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
       const matchSearch = !filters.search ||
         item.nombre?.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.recinto?.toLowerCase().includes(filters.search.toLowerCase()) ||
+        RECINTO_NOMBRES[item.recinto]?.toLowerCase().includes(filters.search.toLowerCase()) ||
         item.item?.toLowerCase().includes(filters.search.toLowerCase());
       const matchDesde = !filters.fechaDesde || !item.inicioInstalacion || item.inicioInstalacion >= filters.fechaDesde;
       const matchHasta = !filters.fechaHasta || !item.inicioInstalacion || item.inicioInstalacion <= filters.fechaHasta;
@@ -167,6 +169,7 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
         if (c.key === "entregaRecinto") return fmtDate(row.entregaRecinto);
         if (c.key === "inicioInstalacion") return fmtDate(row.inicioInstalacion);
         if (c.key === "terminoInstalacion") return fmtDate(row.terminoInstalacion);
+        if (c.key === "recinto") return RECINTO_NOMBRES[row.recinto] ? `${row.recinto} — ${RECINTO_NOMBRES[row.recinto]}` : row.recinto;
         return String((row as any)[c.key] ?? "");
       })
     );
@@ -518,7 +521,13 @@ export function InventoryDataTable({ data: initialData }: InventoryDataTableProp
                       <td key={col.key} style={{ padding: "12px 16px", fontSize: 13, color: COLORS.text, textAlign: "center", fontWeight: 600 }}>{row.piso}</td>
                     );
                     if (col.key === "recinto") return (
-                      <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.recinto}</td>
+                      <td
+                        key={col.key}
+                        title={RECINTO_NOMBRES[row.recinto] ? `${row.recinto} — ${RECINTO_NOMBRES[row.recinto]}` : row.recinto}
+                        style={{ padding: "12px 16px", fontSize: 12, color: COLORS.textMuted, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      >
+                        {row.recinto}{RECINTO_NOMBRES[row.recinto] ? ` — ${RECINTO_NOMBRES[row.recinto]}` : ""}
+                      </td>
                     );
                     if (col.key === "proveedor") return (
                       <td key={col.key} style={{ padding: "12px 16px", fontSize: 12, color: COLORS.text }}>{row.proveedor}</td>
