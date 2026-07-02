@@ -173,6 +173,195 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
         </div>
       </div>
 
+      {/* Distribución por Piso */}
+      <SectionTitle count={S.pisos}>Distribución por Piso</SectionTitle>
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 24,
+      }}>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={S.byPiso} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <XAxis
+              dataKey="name"
+              tick={{ fill: COLORS.textMuted, fontSize: isMobile ? 9 : 12 }}
+              axisLine={{ stroke: COLORS.border }}
+              interval={0}
+              height={36}
+            />
+            <YAxis
+              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="qty" name="Cantidad" radius={[6, 6, 0, 0]}>
+              {S.byPiso.map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 32,
+      }}>
+        <DataTable
+          data={S.byPiso.map(p => ({
+            ...p,
+            pctQty: ((p.qty / S.totalQty) * 100).toFixed(1) + "%",
+          }))}
+          columns={[
+            { key: "name", label: "Piso", highlight: true, width: "150px" },
+            { key: "qty", label: "Cantidad", align: "right", mono: true, width: "120px" },
+            { key: "pctQty", label: "% del Total", align: "right", mono: true, width: "120px" },
+            {
+              key: "qty",
+              label: "Distribución", hideMobile: true,
+              render: (v) => <ProgressBar value={v} max={Math.max(...S.byPiso.map(p => p.qty))} color={COLORS.orange} />
+            },
+          ]}
+        />
+      </div>
+
+      {/* Cantidad por Servicio */}
+      <SectionTitle count={S.uniqueServicios}>Cantidad por Servicio</SectionTitle>
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 24,
+      }}>
+        <ResponsiveContainer width="100%" height={560}>
+          <BarChart data={S.byServicio.slice(0, 20)} layout="vertical" margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
+            <XAxis
+              type="number"
+              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={150}
+              tick={{ fill: COLORS.text, fontSize: 10 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="qty" name="Cantidad" radius={[0, 6, 6, 0]}>
+              {S.byServicio.slice(0, 20).map((_, i) => (
+                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 32,
+      }}>
+        <DataTable
+          data={S.byServicio.map((s, i) => ({
+            ...s,
+            rank: i + 1,
+            pctQty: ((s.qty / S.totalQty) * 100).toFixed(1) + "%",
+          }))}
+          columns={[
+            { key: "rank", label: "#", align: "center", mono: true, width: "60px" },
+            { key: "name", label: "Servicio", highlight: true },
+            { key: "qty", label: "Cantidad", align: "right", mono: true, width: "120px" },
+            { key: "pctQty", label: "% del Total", align: "right", mono: true, width: "120px" },
+            {
+              key: "qty",
+              label: "Distribución", hideMobile: true,
+              render: (v) => <ProgressBar value={v} max={Math.max(...S.byServicio.map(s => s.qty))} color={COLORS.primary} />
+            },
+          ]}
+          maxRows={15}
+        />
+      </div>
+
+      {/* Top Productos */}
+      <SectionTitle count={S.uniqueNombres}>Top 20 Productos</SectionTitle>
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 24,
+      }}>
+        <ResponsiveContainer width="100%" height={isMobile ? 560 : 600}>
+          <BarChart data={S.byNombre.slice(0, 20)} layout="vertical" margin={{ top: 5, right: 8, left: 0, bottom: 5 }}>
+            <XAxis
+              type="number"
+              tick={{ fill: COLORS.textMuted, fontSize: 11 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={160}
+              tick={{ fill: COLORS.text, fontSize: 10 }}
+              axisLine={{ stroke: COLORS.border }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="qty" name="Cantidad" radius={[0, 6, 6, 0]}>
+              {S.byNombre.slice(0, 20).map((e, i) => {
+                const c = e.name.includes("Silla") || e.name.includes("Sillón") ? PIE_FAMILIA_COLORS.Silla
+                  : e.name.includes("Escritorio") || e.name.includes("Mesa") ? PIE_FAMILIA_COLORS.Mesa
+                  : e.name.includes("Mueble") || e.name.includes("Banca") ? PIE_FAMILIA_COLORS.Otro
+                  : CHART_COLORS[i % CHART_COLORS.length];
+                return <Cell key={i} fill={c} />;
+              })}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div style={{
+        background: COLORS.white,
+        borderRadius: 18,
+        padding: 24,
+        border: `1px solid ${COLORS.borderLight}`,
+        boxShadow: "0 2px 16px rgba(99,102,241,0.07), 0 1px 4px rgba(0,0,0,0.04)",
+        marginBottom: 32,
+      }}>
+        <DataTable
+          data={S.byNombre.map((n, i) => ({
+            ...n,
+            rank: i + 1,
+            pctQty: ((n.qty / S.totalQty) * 100).toFixed(1) + "%",
+          }))}
+          columns={[
+            { key: "rank", label: "#", align: "center", mono: true, width: "60px" },
+            { key: "name", label: "Producto", highlight: true },
+            { key: "qty", label: "Cantidad", align: "right", mono: true, width: "120px" },
+            { key: "pctQty", label: "% del Total", align: "right", mono: true, width: "120px" },
+            {
+              key: "qty",
+              label: "Distribución", hideMobile: true,
+              render: (v) => <ProgressBar value={v} max={Math.max(...S.byNombre.map(n => n.qty))} color={COLORS.orange} />
+            },
+          ]}
+          maxRows={15}
+        />
+      </div>
+
       {/* Análisis Completo de Proveedores */}
       <SectionTitle count={S.proveedores}>Análisis de Proveedores</SectionTitle>
 
@@ -272,27 +461,6 @@ export function ResumenTab({ summary: S, data: RAW }: ResumenTabProps) {
           ]}
           maxRows={10}
         />
-      </div>
-
-      {/* Top 5 */}
-      <SectionTitle action="Ver todos">Top 5 Productos</SectionTitle>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        gap: 16,
-        marginBottom: 40,
-      }}>
-        {S.byNombre.slice(0, 5).map((p, i) => (
-          <KPICard
-            key={i}
-            label={p.name}
-            value={p.qty}
-            sub="uds"
-            icon={[Icons.tag, Icons.box, Icons.folder, Icons.stack, Icons.list][i]}
-            color={CHART_COLORS[i]}
-            compact
-          />
-        ))}
       </div>
 
       {/* Tabla de Datos Completa con Filtros */}

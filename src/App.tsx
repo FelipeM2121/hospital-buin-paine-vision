@@ -1,9 +1,6 @@
 import { useState } from "react";
 import {
   ResumenTab,
-  PorPisoTab,
-  PorServicioTab,
-  PorProductoTab,
   PorFechaTab,
   EspecificacionesTecnicasTab,
 } from "./components/Dashboard";
@@ -32,9 +29,6 @@ export default function App() {
             <Header activeTab={activeTab} />
 
             {activeTab === "Resumen" && <ResumenTab summary={S} data={RAW} />}
-            {activeTab === "Por Piso" && <PorPisoTab summary={S} />}
-            {activeTab === "Por Servicio" && <PorServicioTab summary={S} />}
-            {activeTab === "Por Producto" && <PorProductoTab summary={S} />}
             {activeTab === "Por Fecha" && <PorFechaTab summary={S} />}
             {activeTab === "Esp. Técnicas" && (
               <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
