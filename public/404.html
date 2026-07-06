@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirigiendo…</title>
+    <script>
+      // GitHub Pages no soporta rutas SPA: redirige a index.html preservando
+      // la ruta original en ?p=, que index.html restaura al cargar.
+      var l = window.location;
+      l.replace(
+        l.protocol + "//" + l.host + "/?p=" + encodeURIComponent(l.pathname + l.search) + l.hash
+      );
+    </script>
+  </head>
+  <body></body>
+</html>

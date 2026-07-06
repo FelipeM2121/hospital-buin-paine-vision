@@ -4,8 +4,6 @@ import {
   PorFechaTab,
   EspecificacionesTecnicasTab,
 } from "./components/Dashboard";
-import { ChatTab } from "./components/Chat/ChatTab";
-import { RecintoRecognitionTab } from "./components/RecintoRecognitionTab";
 import { RAW, SUMMARY, EETT_FILES } from "./data";
 import { PdfViewer } from "./components/PdfViewer";
 import { Sidebar } from "./components/Sidebar";
@@ -20,28 +18,21 @@ export default function App() {
     <div style={{ minHeight: "100vh", display: "flex" }} className="app-shell">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {activeTab === "Chat IA" ? (
-        <div className="chat-content-wrap">
-          <ChatTab data={RAW} summary={S} eettFiles={EETT_FILES} />
-        </div>
-      ) : (
-        <div className="main-content">
-          <div className="content-container">
-            <Header activeTab={activeTab} />
+      <div className="main-content">
+        <div className="content-container">
+          <Header activeTab={activeTab} />
 
-            {activeTab === "Resumen" && <ResumenTab summary={S} data={RAW} />}
-            {activeTab === "Por Fecha" && <PorFechaTab summary={S} />}
-            {activeTab === "Esp. Técnicas" && (
-              <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
-            )}
-            {activeTab === "Reconocimiento" && <RecintoRecognitionTab />}
-            <div className="dashboard-footer">
-              <span>Hospital Buin Paine • Mobiliario No Clínico</span>
-              <span>Fuente: Cronograma MNC_20260327 • {S.totalQty.toLocaleString("es-CL")} unidades</span>
-            </div>
+          {activeTab === "Resumen" && <ResumenTab summary={S} data={RAW} />}
+          {activeTab === "Por Fecha" && <PorFechaTab summary={S} />}
+          {activeTab === "Esp. Técnicas" && (
+            <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
+          )}
+          <div className="dashboard-footer">
+            <span>Hospital Buin Paine • Mobiliario No Clínico</span>
+            <span>Fuente: Cronograma MNC_20260327 • {S.totalQty.toLocaleString("es-CL")} unidades</span>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -22,7 +22,9 @@
         https://login.microsoftonline.com
         https://graph.microsoft.com
         https://*.sharepoint.com
-        https://script.google.com;
+        https://script.google.com
+        http://localhost:8000
+        https://*.onrender.com;
       img-src 'self' data: https:;
       font-src 'self' data:;
       frame-src 'self'
@@ -36,6 +38,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // GitHub Pages no soporta rutas SPA nativamente: 404.html redirige aquí
+      // preservando la ruta en ?p=, esto la restaura antes de que React monte.
+      (function () {
+        var p = new URLSearchParams(window.location.search).get("p");
+        if (p) window.history.replaceState(null, "", p + window.location.hash);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

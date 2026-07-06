@@ -13,16 +13,12 @@ export const TABS: TabConfig[] = [
   { name: "Resumen",           icon: Icons.chart,    color: COLORS.primary },
   { name: "Por Fecha",         icon: Icons.calendar, color: "#f59e0b" },
   { name: "Esp. Técnicas",     icon: Icons.document, color: "#14b8a6" },
-  { name: "Chat IA",           icon: Icons.chat,     color: "#10b981" },
-  { name: "Reconocimiento",    icon: Icons.location, color: "#8b5cf6" },
 ];
 
 const SHORT_LABELS: Record<string, string> = {
   "Resumen":           "Resumen",
   "Por Fecha":         "Fecha",
   "Esp. Técnicas":     "EETT",
-  "Chat IA":           "Chat IA",
-  "Reconocimiento":    "Recintos",
 };
 
 interface SidebarProps {
