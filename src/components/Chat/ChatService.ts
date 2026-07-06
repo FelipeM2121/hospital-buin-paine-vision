@@ -6,20 +6,10 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
-  image?: string;
   detectedRecinto?: string;
 }
 
-export interface ChatImageAttachment {
-  dataUrl: string;
-  mediaType: string;
-}
-
-type ContentBlock =
-  | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
-
-type ApiMessage = { role: string; content: string | ContentBlock[] };
+type ApiMessage = { role: string; content: string };
 
 export interface ChatError {
   error: boolean;
@@ -163,49 +153,6 @@ function buildIndex(data: RawItem[]): DataIndex {
 
 const sortDesc = (obj: Record<string, number>) =>
   Object.entries(obj).sort(([, a], [, b]) => b - a);
-
-// ── Recinto code matching (tolerant to OCR errors) ──
-function normalizeRecintoCode(s: string): string {
-  return s
-    .toUpperCase()
-    .trim()
-    .replace(/\s+/g, "")
-    .replace(/[–—−]/g, "-")
-    .replace(/O(?=\d)|(?<=\d)O/g, "0"); // letra O confundida con cero junto a dígitos
-}
-
-function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
-    }
-  }
-  return dp[m][n];
-}
-
-function matchRecintoCode(rawCode: string, knownCodes: string[]): { code: string; exact: boolean } | null {
-  if (!rawCode || rawCode === "NO_DETECTADO") return null;
-  const normalized = normalizeRecintoCode(rawCode);
-  const byNormalized = new Map(knownCodes.map((k) => [normalizeRecintoCode(k), k]));
-
-  const exact = byNormalized.get(normalized);
-  if (exact) return { code: exact, exact: true };
-
-  let best: { code: string; dist: number } | null = null;
-  for (const known of knownCodes) {
-    const dist = levenshtein(normalized, normalizeRecintoCode(known));
-    if (!best || dist < best.dist) best = { code: known, dist };
-  }
-  const maxAllowed = normalized.length <= 6 ? 1 : 2;
-  if (best && best.dist <= maxAllowed) return { code: best.code, exact: false };
-  return null;
-}
 
 function normalizeForSearch(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -546,40 +493,6 @@ ${summary.byServicio.slice().sort((a, b) => b.qty - a.qty).map(({ name: svc }) =
   }
 
   return sections.join("\n\n");
-}
-
-// ── Extrae el código de recinto visible en una foto (placa/letrero) ──
-async function extractRecintoCodeFromImage(image: ChatImageAttachment): Promise<string | null> {
-  const base64 = image.dataUrl.split(",")[1] || "";
-  if (!base64) return null;
-
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 30,
-      system: "Observas fotos de recintos/salas de un hospital en construcción. Cada recinto tiene una placa, letrero o etiqueta pegada en la puerta o pared con un código como \"C.5.3.5.1\", \"H.2.25\" o similar (letra(s) seguidas de números separados por puntos). Responde ÚNICAMENTE con ese código exacto tal como aparece escrito, sin explicaciones ni texto adicional. Si no logras ver ningún código de recinto en la imagen, responde exactamente: NO_DETECTADO",
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: image.mediaType, data: base64 } },
-          { type: "text", text: "¿Qué código de recinto aparece en la placa o letrero de esta foto?" },
-        ],
-      }],
-    }),
-    signal: AbortSignal.timeout(30000),
-  });
-
-  if (!res.ok) return null;
-  const body = await res.json().catch(() => null) as { content?: { type: string; text?: string }[] } | null;
-  const text = body?.content?.find((b) => b.type === "text")?.text?.trim();
-  return text || null;
 }
 
 // ── Claude API call con streaming SSE real ──
@@ -938,7 +851,6 @@ class ChatServiceClass {
     _sessionId?: string,
     _history?: Message[],
     onToken?: (token: string) => void,
-    image?: ChatImageAttachment,
   ): Promise<
     | { response: { id: string; response: string; sessionId: string; tokensUsed: number; model: string; timestamp: string; detectedRecinto?: string }; error: null }
     | { response: null; error: ChatError }
@@ -961,38 +873,9 @@ class ChatServiceClass {
     }
 
     try {
-      // Si viene una foto, primero identificamos el código de recinto en la placa/letrero
-      let photoSection = "";
-      let matched: { code: string; exact: boolean } | null = null;
-      if (image) {
-        const rawCode = await extractRecintoCodeFromImage(image).catch(() => null);
-        if (rawCode && rawCode !== "NO_DETECTADO" && this.idx) {
-          matched = matchRecintoCode(rawCode, Object.keys(this.idx.recintoDetail));
-        }
-        if (matched) {
-          const info = this.idx.recintoDetail[matched.code];
-          const entries = Object.entries(info.prods).sort(([, a], [, b]) => b - a);
-          const prodStr = entries.map(([n, q]) => `  • ${n}: ${fmt(q)} uds`).join("\n");
-          const nombreRecinto = RECINTO_NOMBRES[matched.code];
-          photoSection = `══ RECINTO DETECTADO EN FOTO ══
-Código leído en la placa: "${rawCode}"
-${matched.exact ? "Coincidencia exacta" : "Coincidencia aproximada (posible error de lectura)"} en el inventario: "${matched.code}"${nombreRecinto ? ` — ${nombreRecinto}` : ""}
-Piso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}
-Total mobiliario en este recinto: ${fmt(info.qty)} unidades
-Detalle (${entries.length} tipos de producto — LISTA COMPLETA, no omitir ninguno):
-${prodStr}
-Verificación obligatoria: la tabla que entregues debe tener EXACTAMENTE ${entries.length} filas de producto y la suma de sus cantidades debe dar ${fmt(info.qty)}`;
-        } else {
-          photoSection = `══ RECINTO DETECTADO EN FOTO ══
-Código leído en la placa: "${rawCode || "no se pudo leer ningún código"}"
-No se encontró ese código en el inventario de 815 recintos. Informa esto al usuario y pídele que verifique o escriba el código manualmente.`;
-        }
-      }
+      let effectiveMsg = message;
 
-      // El mensaje efectivo para detección de tópicos incluye el código de recinto ya resuelto (si lo hay)
-      let effectiveMsg = matched ? `${message} ${matched.code}` : message;
-
-      // Códigos de recinto mencionados DIRECTAMENTE en este turno (texto o foto), antes de aplicar "sticky"
+      // Códigos de recinto mencionados DIRECTAMENTE en este turno, antes de aplicar "sticky"
       const knownCodes = Object.keys(this.idx.recintoDetail);
       const effectiveMsgNorm = normalizeForSearch(effectiveMsg);
       const directMatches = findMentionedRecintoCodes(effectiveMsg, knownCodes);
@@ -1014,18 +897,12 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
         const info = this.idx.recintoDetail[code];
         const entries = Object.entries(info.prods).sort(([, a], [, b]) => b - a);
         const tableRows = entries.map(([n, q]) => `| ${n} | ${fmt(q)} |`).join("\n");
-        const approxWarning = matched && !matched.exact && matched.code === code
-          ? `_Nota: el código leído en la foto no coincidió exacto — se usó la coincidencia más cercana en el inventario ("${code}"). Verifica que sea el recinto correcto._\n\n`
-          : "";
         const nombreRecinto = RECINTO_NOMBRES[code];
         const titulo = nombreRecinto ? `${nombreRecinto} — Recinto ${code}` : `Recinto ${code} — ${info.servicio}`;
-        const answer = `${approxWarning}**${titulo}**\nPiso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}\n\n| Producto | Cantidad |\n|---|---|\n${tableRows}\n| **Total** | **${fmt(info.qty)}** |\n\n¿Deseas ver la ficha técnica (EETT) de alguno de estos productos, o tienes otra consulta?`;
+        const answer = `**${titulo}**\nPiso ${info.piso} · Servicio ${info.servicio} · Zona ${info.zona}\n\n| Producto | Cantidad |\n|---|---|\n${tableRows}\n| **Total** | **${fmt(info.qty)}** |\n\n¿Deseas ver la ficha técnica (EETT) de alguno de estos productos, o tienes otra consulta?`;
 
         onToken?.(answer);
-        const detHistoryContent: ApiMessage["content"] = image
-          ? [{ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.dataUrl.split(",")[1] || "" } }, { type: "text", text: message.trim() || "(foto del recinto)" }]
-          : message;
-        this.conversationHistory.push({ role: "user", content: detHistoryContent });
+        this.conversationHistory.push({ role: "user", content: message });
         this.conversationHistory.push({ role: "assistant", content: answer });
         if (this.conversationHistory.length > 4) {
           this.conversationHistory = this.conversationHistory.slice(-4);
@@ -1051,17 +928,8 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
       // Build full context with all inventory data
       const context = buildContext(topics, matches, this.idx, this.summary, this.eettFiles, effectiveMsg);
 
-      // Contenido del mensaje del usuario (multimodal si hay foto)
-      const userText = message.trim() || "Identifica el recinto de la foto y dime qué mobiliario no clínico debería tener según el inventario.";
-      const userContent: ApiMessage["content"] = image
-        ? [
-            { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.dataUrl.split(",")[1] || "" } },
-            { type: "text", text: userText },
-          ]
-        : userText;
-
       // Add user message to conversation
-      this.conversationHistory.push({ role: "user", content: userContent });
+      this.conversationHistory.push({ role: "user", content: message });
       if (this.conversationHistory.length > 4) {
         this.conversationHistory = this.conversationHistory.slice(-4);
       }
@@ -1071,7 +939,7 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
       const truncatedContext = context.length > MAX_CONTEXT_CHARS
         ? context.slice(0, MAX_CONTEXT_CHARS) + "\n\n[...contexto truncado por límite de tokens...]"
         : context;
-      const systemPrompt = `${BASE_SYSTEM}\n${photoSection ? photoSection + "\n\n" : ""}DATOS DEL INVENTARIO:\n${truncatedContext}`;
+      const systemPrompt = `${BASE_SYSTEM}\nDATOS DEL INVENTARIO:\n${truncatedContext}`;
 
       const answer = await callClaudeStream(this.conversationHistory, systemPrompt, onToken || (() => {}));
       this.conversationHistory.push({ role: "assistant", content: answer });
@@ -1084,7 +952,6 @@ No se encontró ese código en el inventario de 815 recintos. Informa esto al us
           tokensUsed: 0,
           model: MODEL,
           timestamp: new Date().toISOString(),
-          detectedRecinto: matched?.code,
         },
         error: null,
       };

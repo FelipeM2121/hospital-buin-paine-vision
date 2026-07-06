@@ -1,47 +1,10 @@
 import React, { useRef, useEffect } from "react";
-import { ArrowUp, Square, Camera, X } from "lucide-react";
-
-export interface ChatImageAttachment {
-  dataUrl: string;
-  mediaType: string;
-}
+import { ArrowUp, Square } from "lucide-react";
 
 interface ChatInputProps {
-  onSendMessage: (message: string, image?: ChatImageAttachment) => void;
+  onSendMessage: (message: string) => void;
   isLoading: boolean;
   disabled?: boolean;
-}
-
-const MAX_DIMENSION = 1568; // límite recomendado por Claude vision
-const JPEG_QUALITY = 0.85;
-
-function resizeImageFile(file: File): Promise<ChatImageAttachment> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("Imagen inválida"));
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-          const scale = MAX_DIMENSION / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { reject(new Error("No se pudo procesar la imagen")); return; }
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-        resolve({ dataUrl, mediaType: "image/jpeg" });
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -50,11 +13,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   disabled = false,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = React.useState("");
   const [focused, setFocused] = React.useState(false);
-  const [image, setImage] = React.useState<ChatImageAttachment | null>(null);
-  const [imageError, setImageError] = React.useState<string | null>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -66,10 +26,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((message.trim() || image) && !isLoading && !disabled) {
-      onSendMessage(message, image || undefined);
+    if (message.trim() && !isLoading && !disabled) {
+      onSendMessage(message);
       setMessage("");
-      setImage(null);
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
         textareaRef.current.focus();
@@ -84,24 +43,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setImageError("Solo se permiten imágenes");
-      return;
-    }
-    try {
-      setImageError(null);
-      const resized = await resizeImageFile(file);
-      setImage(resized);
-    } catch {
-      setImageError("No se pudo procesar la foto");
-    }
-  };
-
-  const canSend = (message.trim().length > 0 || !!image) && !isLoading && !disabled;
+  const canSend = message.trim().length > 0 && !isLoading && !disabled;
 
   return (
     <div style={{
@@ -123,40 +65,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           ? "0 0 0 3px rgba(201,98,63,0.10), 0 2px 8px rgba(0,0,0,0.06)"
           : "0 1px 4px rgba(0,0,0,0.06)",
       }}>
-        {image && (
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-            <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
-              <img
-                src={image.dataUrl}
-                alt="Foto del recinto"
-                style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "10px", border: "1px solid #E0DDD7" }}
-              />
-              <button
-                type="button"
-                onClick={() => setImage(null)}
-                title="Quitar foto"
-                style={{
-                  position: "absolute", top: -6, right: -6,
-                  width: 20, height: 20, borderRadius: "50%",
-                  background: "#1C1B1A", color: "#fff",
-                  border: "2px solid #fff",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", padding: 0,
-                }}
-              >
-                <X size={11} />
-              </button>
-            </div>
-            <span style={{ fontSize: "12.5px", color: "#9B958E" }}>
-              Foto del recinto adjunta — se identificará el código automáticamente
-            </span>
-          </div>
-        )}
-
-        {imageError && (
-          <div style={{ fontSize: "12.5px", color: "#C9623F", marginBottom: "8px" }}>{imageError}</div>
-        )}
-
         <textarea
           ref={textareaRef}
           value={message}
@@ -164,7 +72,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={image ? "¿Qué quieres saber de este recinto? (opcional)" : "Pregunta sobre Mobiliario No Clínico…"}
+          placeholder="Pregunta sobre Mobiliario No Clínico…"
           disabled={isLoading || disabled}
           rows={1}
           style={{
@@ -184,37 +92,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           marginTop: "12px",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {/* Attach photo */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileChange}
-              style={{ display: "none" }}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Adjuntar foto del recinto"
-              disabled={isLoading || disabled}
-              style={{
-                width: 30, height: 30,
-                borderRadius: "8px",
-                border: "none",
-                background: image ? "#F5E4DB" : "transparent",
-                color: image ? "#C9623F" : "#9B958E",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: isLoading || disabled ? "not-allowed" : "pointer",
-                transition: "background 0.15s, color 0.15s",
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "#F0EDE8"; e.currentTarget.style.color = "#1C1B1A"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = image ? "#F5E4DB" : "transparent"; e.currentTarget.style.color = image ? "#C9623F" : "#9B958E"; }}
-            >
-              <Camera size={16} />
-            </button>
-
             {/* Model badge */}
             <span style={{
               fontSize: "11.5px", color: "#9B958E",

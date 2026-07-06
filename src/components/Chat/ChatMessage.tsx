@@ -193,21 +193,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           background: "#1C1B1A",
           color: "#F5F3EE",
           borderRadius: "18px 18px 4px 18px",
-          padding: message.image ? "10px" : "10px 16px",
+          padding: "10px 16px",
           maxWidth: "72%",
           fontSize: "14px", lineHeight: 1.65,
           whiteSpace: "pre-wrap", wordBreak: "break-word",
         }}>
-          {message.image && (
-            <img
-              src={message.image}
-              alt="Foto del recinto enviada"
-              style={{
-                display: "block", width: "100%", maxWidth: "260px",
-                borderRadius: "12px", marginBottom: message.content ? "8px" : 0,
-              }}
-            />
-          )}
           {message.content}
         </div>
       </div>
