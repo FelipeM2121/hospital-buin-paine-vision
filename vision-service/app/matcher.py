@@ -45,10 +45,10 @@ def _levenshtein(a: str, b: str) -> int:
 
 
 def _candidate_tokens(ocr_text: str) -> list[str]:
-    """EasyOCR devuelve un fragmento de texto por cada región detectada
-    (nombre de sala, código, otros carteles...); el código de recinto suele
-    venir como uno de esos fragmentos, no como todo el texto de la foto.
-    Probamos cada palabra suelta y el texto completo como candidatos."""
+    """El OCR puede devolver varias palabras/líneas por foto (nombre de sala,
+    código, otros carteles...); el código de recinto suele venir como una
+    palabra suelta, no como todo el texto de la foto. Probamos cada palabra
+    suelta y el texto completo como candidatos."""
     words = [w for w in re.split(r"\s+", ocr_text.strip()) if w]
     whole = ocr_text.strip()
     return list(dict.fromkeys(words + ([whole] if whole else [])))

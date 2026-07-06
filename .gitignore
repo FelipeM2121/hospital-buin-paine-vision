@@ -34,3 +34,6 @@ vision-service/models/*.pt
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify

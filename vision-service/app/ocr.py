@@ -1,27 +1,16 @@
 import io
 
-import easyocr
-import numpy as np
+import pytesseract
 from PIL import Image
-
-_reader: easyocr.Reader | None = None
-
-
-def get_reader() -> easyocr.Reader:
-    """Lazy-loaded singleton: EasyOCR downloads/loads model weights on first
-    use, which is slow — doing it once per process instead of per-request
-    keeps request latency reasonable after the first call."""
-    global _reader
-    if _reader is None:
-        _reader = easyocr.Reader(["es"], gpu=False)
-    return _reader
 
 
 def read_text(image_bytes: bytes) -> str:
-    """Runs OCR on the full image and returns the concatenated detected text.
+    """Runs OCR on the full image and returns the detected text.
     MVP: no YOLO pre-crop — relies on staff framing the letrero closely
-    (see vision-service/README.md photo protocol)."""
+    (see vision-service/README.md photo protocol).
+
+    Usa Tesseract (vía pytesseract) en vez de EasyOCR: EasyOCR carga PyTorch
+    (~600MB) y no cabe en el plan gratis de Render (512MB RAM, se caía al
+    cargar el modelo). Tesseract no depende de PyTorch y corre cómodo ahí."""
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    reader = get_reader()
-    detections = reader.readtext(np.array(image), detail=0)
-    return " ".join(detections)
+    return pytesseract.image_to_string(image, lang="spa").strip()

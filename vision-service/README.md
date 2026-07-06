@@ -4,7 +4,19 @@ Servicio Python (FastAPI) que recibe una foto del letrero de una sala del hospit
 
 ## Enfoque (MVP)
 
-OCR de la foto completa (EasyOCR) → normalizar texto → fuzzy match contra los recintos conocidos (RapidFuzz). Sin detector YOLO todavía: se agrega solo si el OCR se confunde con otros carteles en la foto (ver `app/detector.py`).
+OCR de la foto completa (Tesseract, vía `pytesseract`) → normalizar texto → fuzzy match contra los recintos conocidos (RapidFuzz). Sin detector YOLO todavía: se agrega solo si el OCR se confunde con otros carteles en la foto (ver `app/detector.py`).
+
+Se usa Tesseract y no EasyOCR: EasyOCR carga PyTorch (~600MB) y no cupo en el plan gratis de Render (512MB RAM) — el proceso se quedaba sin memoria justo al cargar el modelo. Tesseract no depende de PyTorch y corre bien con esos recursos.
+
+### Requisito local: binario de Tesseract
+
+`pytesseract` es solo el wrapper de Python — necesita el binario de Tesseract instalado en el sistema:
+
+- **Windows**: instalar desde https://github.com/UB-Mannheim/tesseract/wiki (incluye el paquete de idioma español) y agregarlo al PATH.
+- **macOS**: `brew install tesseract tesseract-lang`
+- **Linux**: `apt-get install tesseract-ocr tesseract-ocr-spa`
+
+En Docker esto ya está resuelto (ver `Dockerfile`).
 
 ## Protocolo de foto (importante para la precisión)
 
