@@ -21,6 +21,20 @@ const SHORT_LABELS: Record<string, string> = {
   "Esp. Técnicas":     "EETT",
 };
 
+// Páginas standalone (rutas propias, fuera del tab-switcher del dashboard):
+// se enlazan como <a> normal (navegación completa), no como tab compartido.
+interface ExternalLink {
+  name: string;
+  href: string;
+  icon: JSX.Element;
+  color: string;
+}
+
+const EXTERNAL_LINKS: ExternalLink[] = [
+  { name: "Chat IA",        href: "/chat",           icon: Icons.chat,     color: "#10b981" },
+  { name: "Reconocimiento", href: "/reconocimiento", icon: Icons.location, color: "#8b5cf6" },
+];
+
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
@@ -63,6 +77,25 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             </button>
           );
         })}
+
+        <div className="sidebar-divider" />
+
+        {EXTERNAL_LINKS.map((link) => (
+          <a
+            key={link.name}
+            href={link.href}
+            title={link.name}
+            className="sidebar-tab-btn"
+            style={{ textDecoration: "none" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = `${link.color}22`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <div className="sidebar-tab-icon" style={{ opacity: 0.65 }}>
+              {link.icon}
+            </div>
+            <span className="sidebar-tab-label">{link.name}</span>
+          </a>
+        ))}
       </div>
 
       <div className="sidebar-divider" />
