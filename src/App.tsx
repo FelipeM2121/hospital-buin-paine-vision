@@ -5,6 +5,7 @@ import {
   EspecificacionesTecnicasTab,
 } from "./components/Dashboard";
 import { ChatTab } from "./components/Chat/ChatTab";
+import { RecintoRecognitionTab } from "./components/RecintoRecognitionTab";
 import { RAW, SUMMARY, EETT_FILES } from "./data";
 import { PdfViewer } from "./components/PdfViewer";
 import { Sidebar } from "./components/Sidebar";
@@ -33,6 +34,7 @@ export default function App() {
             {activeTab === "Esp. Técnicas" && (
               <EspecificacionesTecnicasTab eettFiles={EETT_FILES} pdfViewer={PdfViewer} />
             )}
+            {activeTab === "Reconocimiento" && <RecintoRecognitionTab />}
             <div className="dashboard-footer">
               <span>Hospital Buin Paine • Mobiliario No Clínico</span>
               <span>Fuente: Cronograma MNC_20260327 • {S.totalQty.toLocaleString("es-CL")} unidades</span>
